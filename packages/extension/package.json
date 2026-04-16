@@ -1,0 +1,31 @@
+{
+  "name": "@ecoliko/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EcoLiko browser extension - track AI environmental impact",
+  "scripts": {
+    "build": "npm run build:chrome && npm run build:firefox",
+    "build:chrome": "webpack --mode production",
+    "build:firefox": "webpack --mode production --env browser=firefox",
+    "dev": "webpack --mode development --watch",
+    "dev:firefox": "webpack --mode development --watch --env browser=firefox",
+    "clean": "rm -rf dist dist-firefox",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ecoliko/core": "0.1.0",
+    "@types/chrome": "^0.1.38"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^12.0.0",
+    "css-loader": "^7.1.0",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4",
+    "webpack": "^5.97.0",
+    "webpack-cli": "^6.0.0"
+  },
+  "license": "MIT"
+}
