@@ -23,7 +23,14 @@ export function loadEvents(): UsageEvent[] {
   try {
     const raw = readFileSync(DATA_FILE, 'utf-8');
     const data: StoreData = JSON.parse(raw);
-    return data.events ?? [];
+    const events = data.events ?? [];
+    // Deduplicate by ID to prevent inflated counts from repeated saves
+    const seen = new Set<string>();
+    return events.filter(e => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
   } catch {
     return [];
   }
@@ -31,7 +38,22 @@ export function loadEvents(): UsageEvent[] {
 
 export function saveEvent(event: UsageEvent): void {
   const events = loadEvents();
+  if (events.some(e => e.id === event.id)) return; // Skip duplicates
   events.push(event);
+  ensureDir();
+  writeFileSync(DATA_FILE, JSON.stringify({ events }, null, 2), 'utf-8');
+}
+
+export function saveEvents(newEvents: UsageEvent[]): void {
+  if (newEvents.length === 0) return;
+  const events = loadEvents();
+  const existingIds = new Set(events.map(e => e.id));
+  for (const event of newEvents) {
+    if (!existingIds.has(event.id)) {
+      events.push(event);
+      existingIds.add(event.id);
+    }
+  }
   ensureDir();
   writeFileSync(DATA_FILE, JSON.stringify({ events }, null, 2), 'utf-8');
 }

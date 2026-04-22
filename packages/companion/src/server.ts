@@ -8,15 +8,18 @@
  *
  * Endpoints:
  *   POST /events          — ingest a usage event from any source
+ *   POST /poll            — trigger immediate poll of all log sources
  *   GET  /status          — today's aggregated totals (all sources)
  *   GET  /status/week     — last 7 days
  *   GET  /status/month    — last 30 days
+ *   GET  /status/days     — chart data (supports ?period=day|week|month)
  *   GET  /health          — liveness check (used by extension to detect companion)
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { aggregateEvents, type UsageEvent } from '@ecoliko/core';
 import { saveEvent, getTodayEvents, getEventsByRange } from './store.js';
+import { triggerImmediatePoll } from './poller.js';
 
 const PORT = 7432;
 
@@ -53,6 +56,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       'Access-Control-Allow-Headers': 'Content-Type',
     });
     res.end();
+    return;
+  }
+
+  // POST /poll — trigger immediate poll of all log sources
+  if (method === 'POST' && url === '/poll') {
+    void triggerImmediatePoll();
+    json(res, 200, { ok: true, message: 'Poll triggered' });
     return;
   }
 
@@ -111,23 +121,64 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  // GET /status/days — last 7 days, one entry per day (for chart)
-  if (method === 'GET' && url === '/status/days') {
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date();
-      dayStart.setDate(dayStart.getDate() - i);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-      const events = getEventsByRange(dayStart.getTime(), dayEnd.getTime());
-      const totals = aggregateEvents(events);
-      const year = dayStart.getFullYear();
-      const month = String(dayStart.getMonth() + 1).padStart(2, '0');
-      const day = String(dayStart.getDate()).padStart(2, '0');
-      days.push({ date: `${year}-${month}-${day}`, totals });
+  // GET /status/days — chart data with period support
+  if (method === 'GET' && url.startsWith('/status/days')) {
+    const urlObj = new URL(`http://localhost${url}`);
+    const period = urlObj.searchParams.get('period') ?? 'week';
+    const offset = parseInt(urlObj.searchParams.get('offset') ?? '0', 10);
+
+    let numDays: number;
+    let label: string;
+
+    switch (period) {
+      case 'day':
+        numDays = 1;
+        label = 'day';
+        break;
+      case 'month':
+        numDays = 30;
+        label = 'month';
+        break;
+      case 'hour':
+        numDays = 24;
+        label = 'hour';
+        break;
+      case 'week':
+      default:
+        numDays = 7;
+        label = 'week';
+        break;
     }
-    json(res, 200, { days });
+
+    const days = [];
+    if (label === 'hour') {
+      const baseDay = new Date();
+      baseDay.setDate(baseDay.getDate() - offset);
+      baseDay.setHours(0, 0, 0, 0);
+      const dateStr = `${baseDay.getFullYear()}-${String(baseDay.getMonth() + 1).padStart(2, '0')}-${String(baseDay.getDate()).padStart(2, '0')}`;
+      for (let h = 0; h < 24; h++) {
+        const hStart = new Date(baseDay); hStart.setHours(h, 0, 0, 0);
+        const hEnd   = new Date(baseDay); hEnd.setHours(h, 59, 59, 999);
+        const events = getEventsByRange(hStart.getTime(), hEnd.getTime());
+        const totals = aggregateEvents(events);
+        days.push({ date: dateStr, hour: h, totals });
+      }
+    } else {
+      for (let i = numDays - 1; i >= 0; i--) {
+        const dayStart = new Date();
+        dayStart.setDate(dayStart.getDate() - i - (offset * numDays));
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
+        const events = getEventsByRange(dayStart.getTime(), dayEnd.getTime());
+        const totals = aggregateEvents(events);
+        const year = dayStart.getFullYear();
+        const month = String(dayStart.getMonth() + 1).padStart(2, '0');
+        const day = String(dayStart.getDate()).padStart(2, '0');
+        days.push({ date: `${year}-${month}-${day}`, totals });
+      }
+    }
+    json(res, 200, { days, period: label, numDays });
     return;
   }
 

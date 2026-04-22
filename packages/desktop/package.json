@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "dev": "tsc && electron dist/main.js",
+    "dev": "tsc && concurrently \"tsc --watch --preserveWatchOutput\" \"nodemon --watch dist --ext js --delay 0.5 --exec \\\"electron dist/main.js\\\"\"",
     "start": "electron dist/main.js"
   },
   "dependencies": {
@@ -16,7 +16,9 @@
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.0.0",
+    "nodemon": "^3.0.0"
   },
   "license": "MIT"
 }

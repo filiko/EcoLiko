@@ -8,11 +8,10 @@ import {
   shell,
   Menu,
 } from 'electron';
-import { join, dirname, resolve } from 'node:path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { homedir, platform } from 'node:os';
-import { spawn } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, watch } from 'node:fs';
+import { homedir } from 'node:os';
 import { deflateSync } from 'node:zlib';
 import { request } from 'node:http';
 import { aggregateEvents, type UsageTotals, type UsageEvent } from '@ecoliko/core';
@@ -21,7 +20,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const COMPANION_PORT = 7432;
-const SNAPSHOTS_DIR = join(homedir(), '.ecoliko', 'openclaw', 'snapshots');
 
 interface Snapshot {
   capturedAt: number;
@@ -30,7 +28,7 @@ interface Snapshot {
 
 type SnapshotWithSource = Snapshot & { _source: string };
 
-/** Try companion HTTP API first, fall back to latest openclaw snapshot on disk */
+/** Try companion HTTP API first, fall back to data.json on disk */
 async function fetchLatestData(): Promise<SnapshotWithSource | null> {
   try {
     const data = await httpGet(`http://127.0.0.1:${COMPANION_PORT}/status`);
@@ -38,27 +36,57 @@ async function fetchLatestData(): Promise<SnapshotWithSource | null> {
     return { capturedAt: Date.now(), totals: parsed.totals, _source: 'companion' };
   } catch { /* companion not running */ }
 
-  if (!existsSync(SNAPSHOTS_DIR)) return null;
-  const files = readdirSync(SNAPSHOTS_DIR).filter(f => f.endsWith('.json')).sort().reverse();
-  if (files.length === 0) return null;
-  try {
-    const snap = JSON.parse(readFileSync(join(SNAPSHOTS_DIR, files[0]!), 'utf8')) as Snapshot;
-    return { ...snap, _source: 'openclaw' };
-  } catch { return null; }
+  return buildTotalsFromDisk();
 }
 
-/** Fetch 7-day per-day breakdown from companion, fall back to local data file */
-async function fetchDays(): Promise<unknown[] | null> {
+function buildTotalsFromDisk(): SnapshotWithSource | null {
+  const dataFile = join(homedir(), '.ecoliko', 'data.json');
+  if (!existsSync(dataFile)) {
+    console.log('[EcoLiko main] buildTotalsFromDisk: data.json not found');
+    return null;
+  }
   try {
-    const data = await httpGet(`http://127.0.0.1:${COMPANION_PORT}/status/days`);
+    const raw = readFileSync(dataFile, 'utf8');
+    const json = JSON.parse(raw) as { events?: UsageEvent[] };
+    const events = json.events ?? [];
+    console.log('[EcoLiko main] buildTotalsFromDisk: total events in file:', events.length);
+    if (events.length === 0) return null;
+
+    // Deduplicate by ID
+    const seen = new Set<string>();
+    const uniqueEvents = events.filter(e => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+    console.log('[EcoLiko main] buildTotalsFromDisk: unique events:', uniqueEvents.length);
+
+    // Show all available data (not filtered by date)
+    const totals = aggregateEvents(uniqueEvents);
+    console.log('[EcoLiko main] buildTotalsFromDisk: totalTokens =', totals.totalTokens, 'eventCount =', totals.eventCount);
+    return { capturedAt: Date.now(), totals, _source: 'disk' };
+  } catch (e) {
+    console.log('[EcoLiko main] buildTotalsFromDisk: error:', e);
+    return null;
+  }
+}
+
+/** Fetch per-day breakdown from companion, fall back to local data file */
+async function fetchDays(period: string = 'week', offset: number = 0): Promise<unknown[] | null> {
+  console.log('[EcoLiko main] fetchDays() called with period:', period, 'offset:', offset);
+  try {
+    const data = await httpGet(`http://127.0.0.1:${COMPANION_PORT}/status/days?period=${period}&offset=${offset}`);
+    console.log('[EcoLiko main] fetchDays() got response from companion');
     const parsed = JSON.parse(data) as { days: unknown[] };
     return parsed.days;
-  } catch { /* companion not running — fall back to local data */ }
+  } catch (e) {
+    console.log('[EcoLiko main] fetchDays() companion not available, falling back to disk:', e);
+  }
 
-  return buildDaysFromDisk();
+  return buildDaysFromDisk(period, offset);
 }
 
-function buildDaysFromDisk(): unknown[] | null {
+function buildWeekTotalsFromDisk(): UsageTotals | null {
   const dataFile = join(homedir(), '.ecoliko', 'data.json');
   if (!existsSync(dataFile)) return null;
   try {
@@ -66,21 +94,131 @@ function buildDaysFromDisk(): unknown[] | null {
     const events = raw.events ?? [];
     if (events.length === 0) return null;
 
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date();
-      dayStart.setDate(dayStart.getDate() - i);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-      const dayEvents = events.filter(e => e.timestamp >= dayStart.getTime() && e.timestamp <= dayEnd.getTime());
-      const totals = aggregateEvents(dayEvents);
-      const year = dayStart.getFullYear();
-      const month = String(dayStart.getMonth() + 1).padStart(2, '0');
-      const day = String(dayStart.getDate()).padStart(2, '0');
-      days.push({ date: `${year}-${month}-${day}`, totals });
+    // Deduplicate by ID to prevent inflated counts
+    const seen = new Set<string>();
+    const uniqueEvents = events.filter(e => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+
+    const now = Date.now();
+    const sixDaysAgo = now - 6 * 24 * 60 * 60 * 1000;
+    let weekEvents = uniqueEvents.filter(e => e.timestamp >= sixDaysAgo);
+
+    // If no events in past 6 days, show all available data so the UI isn't blank
+    if (weekEvents.length === 0) {
+      weekEvents = uniqueEvents;
     }
+
+    return aggregateEvents(weekEvents);
+  } catch { return null; }
+}
+
+function buildDaysFromDisk(period: string = 'week', offset: number = 0): unknown[] | null {
+  console.log('[EcoLiko main] buildDaysFromDisk() called with period:', period, 'offset:', offset);
+  const dataFile = join(homedir(), '.ecoliko', 'data.json');
+  if (!existsSync(dataFile)) {
+    console.log('[EcoLiko main] data.json does not exist at', dataFile);
+    return null;
+  }
+  try {
+    const raw = JSON.parse(readFileSync(dataFile, 'utf8')) as { events?: UsageEvent[] };
+    const events = raw.events ?? [];
+    console.log('[EcoLiko main] Total events in data.json:', events.length);
+    if (events.length === 0) return null;
+
+    // Deduplicate by ID to prevent inflated counts
+    const seen = new Set<string>();
+    const uniqueEvents = events.filter(e => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+    console.log('[EcoLiko main] Unique events after deduplication:', uniqueEvents.length);
+
+    let numDays: number;
+    switch (period) {
+      case 'day':   numDays = 1;  break;
+      case 'month': numDays = 30; break;
+      case 'hour':  numDays = 24; break;
+      case 'week':
+      default:      numDays = 7; break;
+    }
+
+    const days = [];
+    if (period === 'hour') {
+      const baseDay = new Date();
+      baseDay.setDate(baseDay.getDate() - offset);
+      baseDay.setHours(0, 0, 0, 0);
+      const dateStr = `${baseDay.getFullYear()}-${String(baseDay.getMonth() + 1).padStart(2, '0')}-${String(baseDay.getDate()).padStart(2, '0')}`;
+      for (let h = 0; h < 24; h++) {
+        const hStart = new Date(baseDay); hStart.setHours(h, 0, 0, 0);
+        const hEnd   = new Date(baseDay); hEnd.setHours(h, 59, 59, 999);
+        const hourEvents = uniqueEvents.filter(e => e.timestamp >= hStart.getTime() && e.timestamp <= hEnd.getTime());
+        const totals = aggregateEvents(hourEvents);
+        days.push({ date: dateStr, hour: h, totals });
+      }
+    } else {
+      for (let i = numDays - 1; i >= 0; i--) {
+        const dayStart = new Date();
+        dayStart.setDate(dayStart.getDate() - i - (offset * numDays));
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
+        const dayEvents = uniqueEvents.filter(e => e.timestamp >= dayStart.getTime() && e.timestamp <= dayEnd.getTime());
+        console.log(`[EcoLiko main] Day ${dayStart.toISOString().slice(0,10)}: ${dayEvents.length} events (ts range: ${dayStart.getTime()} to ${dayEnd.getTime()})`);
+        const totals = aggregateEvents(dayEvents);
+        const year = dayStart.getFullYear();
+        const month = String(dayStart.getMonth() + 1).padStart(2, '0');
+        const day = String(dayStart.getDate()).padStart(2, '0');
+        days.push({ date: `${year}-${month}-${day}`, totals });
+      }
+    }
+
+    console.log('[EcoLiko main] buildDaysFromDisk() returning', days.length, 'days');
+    console.log('[EcoLiko main] First 3 days:', JSON.stringify(days.slice(0, 3)));
     return days;
+  } catch (e) {
+    console.log('[EcoLiko main] buildDaysFromDisk() error:', e);
+    return null;
+  }
+}
+
+interface DayRangeResult {
+  days: unknown[];
+  startDate: string;
+  endDate: string;
+}
+
+function buildRangeFromDisk(startDate: string, endDate: string): DayRangeResult | null {
+  const dataFile = join(homedir(), '.ecoliko', 'data.json');
+  if (!existsSync(dataFile)) return null;
+  try {
+    const raw = JSON.parse(readFileSync(dataFile, 'utf8')) as { events?: UsageEvent[] };
+    const events = raw.events ?? [];
+    if (events.length === 0) return null;
+
+    const seen = new Set<string>();
+    const uniqueEvents = events.filter(e => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const dayEvents = uniqueEvents.filter(e => e.timestamp >= start.getTime() && e.timestamp <= end.getTime());
+    const totals = aggregateEvents(dayEvents);
+
+    return {
+      days: [{ date: startDate, totals }],
+      startDate,
+      endDate,
+    };
   } catch { return null; }
 }
 
@@ -93,6 +231,19 @@ function httpGet(url: string): Promise<string> {
     });
     req.on('error', reject);
     req.setTimeout(2000, () => { req.destroy(); reject(new Error('timeout')); });
+    req.end();
+  });
+}
+
+function httpPost(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = request(url, { method: 'POST' }, res => {
+      const chunks: Buffer[] = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve());
+    });
+    req.on('error', reject);
+    req.setTimeout(5000, () => { req.destroy(); reject(new Error('timeout')); });
     req.end();
   });
 }
@@ -182,7 +333,7 @@ if (process.platform === 'darwin') app.dock?.hide();
 let tray: Tray;
 let win: BrowserWindow;
 let isPinned = false;
-let displayMode: 'popup' | 'toolbar' = 'popup';
+let displayMode: 'popup' | 'toolbar' = 'toolbar';
 
 function getWindowConfig() {
   const isToolbar = displayMode === 'toolbar';
@@ -239,19 +390,19 @@ app.whenReady().then(() => {
 
   win.loadFile(join(__dirname, '../renderer/index.html'));
 
-  // Hide on blur (click outside) — unless pinned or in toolbar mode
-  win.on('blur', () => {
-    if (isPinned) return;
-    const dm = displayMode as string;
-    if (dm === 'toolbar') return;
-    if (!win.webContents.isDevToolsOpened()) win.minimize();
-  });
+  if (!app.isPackaged) {
+    watch(join(__dirname, '../renderer'), { recursive: true }, () => {
+      win.webContents.reload();
+    });
+  }
 
   // IPC handlers
   ipcMain.handle('ecoliko:get-data', () => fetchLatestData());
-  ipcMain.handle('ecoliko:get-days', () => fetchDays());
+  ipcMain.handle('ecoliko:get-days', (_, period: string, offset: number = 0) => fetchDays(period, offset));
+  ipcMain.handle('ecoliko:get-week', () => buildWeekTotalsFromDisk());
+  ipcMain.handle('ecoliko:get-range', (_, startDate: string, endDate: string) => buildRangeFromDisk(startDate, endDate));
   ipcMain.handle('ecoliko:poll-now', async () => {
-    triggerPoll();
+    await triggerPoll();
     // Wait a beat then push fresh data
     setTimeout(() => {
       void refreshTrayTooltip();
@@ -277,6 +428,10 @@ app.whenReady().then(() => {
     const cfg = getWindowConfig();
     win.setSkipTaskbar(cfg.skipTaskbar);
     win.setAlwaysOnTop(cfg.alwaysOnTop);
+  });
+
+  ipcMain.on('ecoliko:set-startup', (_, enabled: boolean) => {
+    app.setLoginItemSettings({ openAtLogin: enabled });
   });
 
   // Poll companion every 60s for live tray tooltip updates
@@ -342,12 +497,11 @@ function setTrayTooltip(snap: SnapshotWithSource | null): void {
   tray.setToolTip(`EcoLiko ${grade} — ${snap.totals.eventCount} interactions today`);
 }
 
-function triggerPoll(): void {
-  const openclawCli = join(__dirname, '../../openclaw/dist/index.js');
-  if (!existsSync(openclawCli)) {
-    console.warn('[desktop] openclaw CLI not found at', openclawCli);
-    return;
+async function triggerPoll(): Promise<void> {
+  try {
+    await httpPost(`http://127.0.0.1:${COMPANION_PORT}/poll`);
+    console.log('[desktop] Poll triggered successfully');
+  } catch (err) {
+    console.warn('[desktop] Poll trigger failed:', err);
   }
-  const child = spawn(process.execPath, [openclawCli, 'run'], { stdio: 'ignore' });
-  child.unref();
 }

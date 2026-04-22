@@ -5,6 +5,7 @@
 export {
   loadEvents,
   saveEvent,
+  saveEvents,
   loadConfig,
   saveConfig,
   getTodayEvents,
