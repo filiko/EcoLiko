@@ -1,0 +1,2 @@
+(()=>{"use strict";const e="ECOLIKO_USAGE_EVENT";window.addEventListener("message",a=>{a.origin===window.location.origin&&a.data?.type===e&&chrome.runtime.sendMessage({type:e,payload:a.data.payload})})})();
+//# sourceMappingURL=relay.js.map

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=360">
+  <link rel="stylesheet" href="popup.css">
+  <title>EcoLiko</title>
+</head>
+<body>
+  <div class="container">
+
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/>
+          <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+        </svg>
+        <span class="logo-text">EcoLiko</span>
+      </div>
+      <div class="score-chip" id="score-badge">A+</div>
+    </header>
+
+    <div class="divider"></div>
+
+    <section class="metrics">
+      <div class="metric-row">
+        <div class="metric-left">
+          <svg class="metric-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span class="metric-label">Energy</span>
+        </div>
+        <span class="metric-value" id="energy-value">0 Wh</span>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-left">
+          <svg class="metric-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+          <span class="metric-label">Water</span>
+        </div>
+        <div class="metric-value-group">
+          <span class="metric-value" id="water-value">—</span>
+          <span class="metric-sub" id="water-raw">0 mL</span>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-left">
+          <svg class="metric-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
+            <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
+            <path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
+          </svg>
+          <span class="metric-label">Carbon</span>
+        </div>
+        <span class="metric-value" id="co2-value">0 mg</span>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <div class="meta-row">
+      <span id="interactions">0</span> interaction<span id="interactions-s">s</span>
+      &middot;
+      <span id="total-tokens">0</span> tokens
+      &middot;
+      score <span id="score-text">A+</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <section class="history">
+      <div class="history-label">7-day trend</div>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <div class="divider"></div>
+
+    <p class="tip" id="tip-text">Start using AI tools — EcoLiko will track your impact.</p>
+
+    <div class="connection-row">
+      <span class="dot" id="connection-dot"></span>
+      <span class="connection-label" id="connection-label">Checking...</span>
+    </div>
+
+    <footer class="footer">
+      <a class="footer-link" href="https://arxiv.org/abs/2505.09598" target="_blank" rel="noopener">
+        Methodology &amp; sources
+        <svg class="link-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </a>
+    </footer>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
