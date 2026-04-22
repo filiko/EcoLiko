@@ -1,0 +1,35 @@
+{
+  "name": "ecoliko",
+  "version": "0.1.0",
+  "description": "Track the environmental impact (water, electricity, CO2) of your AI/LLM usage",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./parsers": "./dist/parsers/index.js",
+    "./store": "./dist/store.js"
+  },
+  "bin": {
+    "ecoliko": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ecoliko/core": "0.1.0",
+    "chalk": "^5.4.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
+  },
+  "license": "MIT"
+}

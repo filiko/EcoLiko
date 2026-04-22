@@ -1,0 +1,45 @@
+{
+  "name": "@ecoliko/vscode-extension",
+  "displayName": "EcoLiko — AI Environmental Impact",
+  "description": "Track water, electricity, and CO2 from AI usage in VS Code, Cursor, Windsurf, and all forks",
+  "version": "0.2.0",
+  "publisher": "ecoliko",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "EcoLiko",
+      "properties": {
+        "ecoliko.companionUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:7432",
+          "description": "URL of the EcoLiko companion server"
+        },
+        "ecoliko.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show eco score in the status bar"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@ecoliko/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^2.0.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.claude/
+*.tsbuildinfo
+.env
+.DS_Store
+Thumbs.db
+*.zip
+coverage/

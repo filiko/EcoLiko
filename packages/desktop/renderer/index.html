@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" />
+<title>EcoLiko</title>
+<style>
+:root {
+  --bg:        #faf9f7;
+  --border:    #e8e3dc;
+  --text:      #1c1917;
+  --text-2:    #78716c;
+  --text-3:    #a8a29e;
+  --accent:    #3d6b4f;
+  --accent-bg: #edf3ef;
+  --accent-border: #c3d9ca;
+  --red-bg:    #fee2e2;
+  --red:       #991b1b;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { height: 100%; }
+body {
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  user-select: text;
+  overflow: hidden;
+}
+
+.popup {
+  height: 100vh;
+  background: var(--bg);
+  border-radius: 12px;
+  overflow-y: auto;
+  box-shadow: 0 20px 48px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.07);
+  position: relative;
+}
+.popup::-webkit-scrollbar { width: 4px; }
+.popup::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Views ── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Drag bar ── */
+.drag-bar { height: 4px; -webkit-app-region: drag; }
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px 10px;
+  -webkit-app-region: drag;
+}
+.logo { display:flex; align-items:center; gap:7px; -webkit-app-region:no-drag; }
+.logo-icon { width:18px; height:18px; color:var(--accent); flex-shrink:0; }
+.logo-text { font-size:15px; font-weight:600; letter-spacing:-.2px; }
+.view-title { font-size:15px; font-weight:600; letter-spacing:-.2px; }
+
+.header-btns { display:flex; align-items:center; gap:4px; -webkit-app-region:no-drag; }
+.icon-btn {
+  width:26px; height:26px;
+  border-radius:6px;
+  background:transparent;
+  border:none; cursor:pointer;
+  color:var(--text-3);
+  display:flex; align-items:center; justify-content:center;
+  transition: background .12s, color .12s;
+  font-size: 13px;
+}
+.icon-btn:hover { background:var(--accent-bg); color:var(--accent); }
+.icon-btn.active { background:var(--accent-bg); color:var(--accent); }
+.icon-btn.close:hover { background:var(--red-bg); color:var(--red); }
+.icon-btn.minimize { font-size: 16px; line-height: 1; }
+.back-btn { font-size:16px; margin-right:2px; }
+
+/* ── Divider ── */
+.divider { height:1px; background:var(--border); }
+
+/* ── Metrics ── */
+.metrics { padding:2px 0; }
+.metric-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 16px;
+}
+.metric-row:not(:last-child) { border-bottom:1px solid var(--border); }
+.metric-left { display:flex; align-items:center; gap:9px; }
+.metric-icon { width:15px; height:15px; color:var(--text-3); flex-shrink:0; }
+.metric-label { font-size:12px; color:var(--text-2); }
+.metric-right { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
+.metric-value { font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+.metric-sub { font-size:10px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+/* ── Water visual ── */
+.water-visual { display:flex; align-items:flex-end; justify-content:flex-start; gap:6px; padding:4px 16px 10px; min-height:0; overflow:hidden; }
+.water-visual.hidden { display:none; }
+.wv-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
+
+/* ── Meta ── */
+.meta-row { padding:7px 16px; font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+.meta-row b { color:var(--text-2); font-weight:500; }
+
+/* ── Chart ── */
+.history { padding:12px 16px 18px; }
+.section-label { font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-3); margin-bottom:10px; }
+.chart { display:flex; align-items:flex-end; gap:5px; height:52px; }
+.chart-bar {
+  flex:1; border-radius:2px 2px 0 0; min-height:3px;
+  position:relative; cursor:default; transition:opacity .15s;
+}
+.chart-bar:hover { opacity:.75; }
+.chart-bar-label { position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); font-size:9px; color:var(--text-3); white-space:nowrap; }
+
+/* ── Trackers ── */
+.trackers { padding:10px 16px 12px; }
+.tracker-block { margin-bottom:10px; }
+.tracker-block:last-child { margin-bottom:0; }
+.tracker-name { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--accent); margin-bottom:6px; }
+.tracker-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+.tracker-events { font-size:11px; font-weight:400; color:var(--text-3); margin-left:auto; }
+table { width:100%; border-collapse:collapse; }
+thead th { font-size:10px; font-weight:600; letter-spacing:.4px; text-transform:uppercase; color:var(--text-3); text-align:left; padding:3px 4px 5px; border-bottom:1px solid var(--border); }
+thead th:not(:first-child) { text-align:right; }
+tbody td { font-size:11px; color:var(--text-2); padding:4px 4px; border-bottom:1px solid #f0ece7; }
+tbody tr:last-child td { border-bottom:none; }
+tbody td:first-child { color:var(--text); font-family:'SF Mono','Fira Code',monospace; font-size:10.5px; }
+tbody td:not(:first-child) { text-align:right; }
+
+/* ── Undetected trackers ── */
+.undetected-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+.undetected-item { font-size:10px; color:var(--text-3); display:flex; align-items:center; gap:3px; }
+.undetected-plus { font-size:11px; font-weight:600; color:var(--border); line-height:1; }
+
+/* ── Tip ── */
+.tip { padding:9px 16px; font-size:11px; color:var(--text-2); font-style:italic; line-height:1.5; }
+
+/* ── Period toggle ── */
+.period-bar { display:flex; align-items:center; justify-content:center; padding:6px 16px 5px; gap:12px; }
+.period-toggle { display:flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+.period-btn { padding:4px 10px; font-size:11px; font-weight:500; cursor:pointer; background:transparent; border:none; color:var(--text-2); transition:background .15s,color .15s; -webkit-app-region:no-drag; }
+.period-btn:not(:last-child) { border-right:1px solid var(--border); }
+.period-btn.active { background:var(--accent-bg); color:var(--accent); }
+.date-display { font-size:12px; font-weight:500; color:var(--text-2); min-width:50px; text-align:center; }
+.nav-arrows { display:flex; gap:4px; }
+.nav-btn { width:24px; height:24px; border-radius:4px; border:1px solid var(--border); background:transparent; cursor:pointer; font-size:12px; color:var(--text-2); display:flex; align-items:center; justify-content:center; transition:background .15s; }
+.nav-btn:hover { background:var(--accent-bg); color:var(--accent); }
+
+/* ── Bottom bar ── */
+.bottom { display:flex; align-items:center; justify-content:space-between; padding:8px 16px 12px; }
+.conn-row { display:flex; align-items:center; gap:6px; }
+.dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.dot-on { background:#22c55e; }
+.dot-off { background:#f59e0b; }
+.conn-label { font-size:10px; color:var(--text-3); }
+.footer-link { display:inline-flex; align-items:center; gap:4px; font-size:10px; color:var(--text-3); text-decoration:none; cursor:pointer; transition:color .15s; }
+.footer-link:hover { color:var(--accent); }
+.link-icon { width:10px; height:10px; }
+.poll-btn {
+  font-size:11px; font-weight:500; padding:4px 12px; border-radius:6px;
+  border:1px solid var(--accent-border); background:var(--accent-bg); color:var(--accent);
+  cursor:pointer; transition:background .12s; margin-left:8px;
+}
+.poll-btn:hover { background:#d8eadd; }
+.poll-btn.busy { opacity:.5; cursor:not-allowed; }
+
+/* ═══════════════════════════════════════
+   SETTINGS VIEW
+═══════════════════════════════════════ */
+.settings-body { padding:4px 0 8px; }
+
+.settings-section { padding:10px 16px 4px; }
+.settings-section-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3); margin-bottom:8px; }
+.settings-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; }
+.settings-row:not(:last-child) { border-bottom:1px solid var(--border); }
+.settings-row-label { display:flex; flex-direction:column; gap:2px; }
+.settings-row-name { font-size:13px; font-weight:500; color:var(--text); }
+.settings-row-desc { font-size:10px; color:var(--text-3); }
+.toggle { position:relative; width:34px; height:20px; border-radius:10px; background:var(--border); cursor:pointer; transition:background .2s; flex-shrink:0; -webkit-app-region:no-drag; }
+.toggle.on { background:var(--accent); }
+.toggle-knob { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:white; transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.toggle.on .toggle-knob { left:16px; }
+.toggle-group { display:flex; border:1px solid var(--border); border-radius:7px; overflow:hidden; }
+.toggle-group-btn { padding:5px 10px; font-size:11px; font-weight:500; cursor:pointer; background:transparent; border:none; color:var(--text-2); transition:background .15s,color .15s; }
+.toggle-group-btn:not(:last-child) { border-right:1px solid var(--border); }
+.toggle-group-btn.active { background:var(--accent-bg); color:var(--accent); }
+
+.preset-list { padding:0 16px; display:flex; flex-direction:column; gap:4px; }
+.preset-item {
+  padding:10px 12px; border-radius:8px;
+  border:1px solid transparent; cursor:pointer;
+  transition:background .12s, border-color .12s;
+}
+.preset-item:hover { background:#f2ede6; }
+.preset-item.selected { background:var(--accent-bg); border-color:var(--accent-border); }
+.preset-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.preset-radio {
+  width:14px; height:14px; border-radius:50%; border:2px solid var(--border);
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  transition:border-color .12s;
+}
+.preset-item.selected .preset-radio { border-color:var(--accent); }
+.preset-radio-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); display:none; }
+.preset-item.selected .preset-radio-dot { display:block; }
+.preset-name { font-size:13px; font-weight:600; color:var(--text); }
+
+.preset-desc { font-size:11px; color:var(--text-3); padding-left:22px; line-height:1.5; margin-top:4px; }
+.preset-sources { padding-left:22px; margin-top:3px; }
+.preset-source-link {
+  font-size:10px; color:var(--accent); text-decoration:underline; cursor:pointer;
+  background:none; border:none; padding:0; text-align:left; line-height:1.6;
+  -webkit-app-region:no-drag;
+}
+.preset-source-link:hover { opacity:.75; }
+/* Multiplier preview */
+.multiplier-preview { display:flex; gap:6px; padding-left:22px; margin-top:5px; }
+.mp-chip {
+  font-size:10px; padding:2px 7px; border-radius:99px;
+  background:rgba(0,0,0,.04); color:var(--text-2); border:1px solid var(--border);
+}
+.persp-name { font-size:10px; color:var(--text-3); font-weight:500; margin-left:auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px; }
+.persp-nav { display:flex; align-items:center; gap:1px; flex-shrink:0; margin-left:4px; -webkit-app-region:no-drag; }
+.persp-arrow { width:18px; height:18px; border:none; background:transparent; color:var(--text-3); font-size:16px; line-height:1; cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; transition:background .1s,color .1s; -webkit-app-region:no-drag; }
+.persp-arrow:hover:not(:disabled) { background:rgba(0,0,0,.06); color:var(--text); }
+.persp-arrow:disabled { opacity:.3; cursor:default; }
+
+/* Custom sliders */
+.custom-sliders { padding:12px 16px 4px; display:none; }
+.custom-sliders.visible { display:block; }
+.slider-row { margin-bottom:10px; }
+.slider-label { display:flex; justify-content:space-between; font-size:11px; color:var(--text-2); margin-bottom:4px; }
+.slider-label span { font-weight:600; color:var(--text); }
+input[type=range] {
+  width:100%; height:4px; appearance:none; background:var(--border);
+  border-radius:99px; outline:none; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  appearance:none; width:14px; height:14px; border-radius:50%;
+  background:var(--accent); cursor:pointer;
+  box-shadow:0 0 0 2px rgba(255,255,255,.8), 0 0 0 3px var(--accent-border);
+}
+
+.settings-note { padding:8px 16px 4px; font-size:10px; color:var(--text-3); font-style:italic; line-height:1.5; }
+
+/* ═══════════════════════════════════════
+   CALCULATOR VIEW
+═══════════════════════════════════════ */
+.calc-body { padding:12px 16px; }
+
+.calc-field { margin-bottom:10px; }
+.calc-label { font-size:11px; color:var(--text-2); margin-bottom:4px; display:block; font-weight:500; }
+.calc-input, .calc-select {
+  width:100%; padding:7px 10px; border-radius:6px;
+  border:1px solid var(--border); background:white; color:var(--text);
+  font-size:13px; font-family:inherit; outline:none;
+  transition:border-color .12s;
+  -webkit-app-region:no-drag;
+  user-select:text;
+}
+.calc-input:focus, .calc-select:focus { border-color:var(--accent); }
+
+.calc-row { display:flex; gap:8px; }
+.calc-row .calc-field { flex:1; }
+
+.calc-divider { height:1px; background:var(--border); margin:12px 0; }
+
+.calc-result { margin-bottom:8px; }
+.calc-result-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 0;
+}
+.calc-result-row:not(:last-child) { border-bottom:1px solid #f0ece7; }
+.calc-metric-left { display:flex; align-items:center; gap:8px; }
+.calc-icon { width:14px; height:14px; color:var(--text-3); flex-shrink:0; }
+.calc-metric-name { font-size:12px; color:var(--text-2); }
+.calc-metric-right { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
+.calc-metric-val { font-size:13px; font-weight:600; color:var(--text); }
+.calc-metric-sub { font-size:10px; color:var(--text-3); }
+.calc-empty { padding:20px 0; text-align:center; font-size:12px; color:var(--text-3); font-style:italic; }
+
+/* ═══════════════════════════════════════
+   INFO VIEW
+═══════════════════════════════════════ */
+.info-body { padding:0 0 16px; }
+.info-section { padding:12px 16px 4px; }
+.info-section + .info-section { padding-top:8px; }
+.info-heading {
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--accent); margin-bottom:8px;
+}
+.info-p {
+  font-size:11.5px; color:var(--text-2); line-height:1.6; margin-bottom:7px;
+}
+.info-p:last-child { margin-bottom:0; }
+.info-callout {
+  background:var(--accent-bg); border:1px solid var(--accent-border);
+  border-radius:6px; padding:8px 10px; margin:8px 0;
+  font-size:11px; color:var(--text); line-height:1.55;
+}
+.info-callout b { color:var(--accent); }
+.info-sources { padding:4px 16px 0; display:flex; flex-direction:column; gap:2px; border-top:1px solid var(--border); margin-top:10px; }
+.info-source-link {
+  font-size:10px; color:var(--accent); text-decoration:underline; cursor:pointer;
+  background:none; border:none; padding:3px 0; text-align:left; line-height:1.5;
+  -webkit-app-region:no-drag;
+}
+.info-source-link:hover { opacity:.75; }
+</style>
+</head>
+<body>
+<div class="popup">
+
+<!-- ══════════════════ MAIN VIEW ══════════════════ -->
+<div class="view active" id="view-main">
+  <div class="drag-bar"></div>
+  <header class="header">
+    <div class="logo">
+      <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/>
+        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+      </svg>
+      <span class="logo-text">EcoLiko</span>
+    </div>
+    <div class="header-btns">
+      <!-- How it works -->
+      <button class="icon-btn" title="How this is calculated" onclick="showView('info')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </button>
+      <!-- Calculator -->
+      <button class="icon-btn" title="Impact calculator" onclick="showView('calc')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="2" width="16" height="20" rx="2"/>
+          <line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/>
+          <line x1="8" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/>
+        </svg>
+      </button>
+      <!-- Settings -->
+      <button class="icon-btn" title="Methodology settings" onclick="showView('settings')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button class="icon-btn pin-btn" title="Pin window" onclick="togglePin()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></button>
+      <button class="icon-btn" title="Minimize" onclick="window.ecoliko.minimize()">─</button>
+      <button class="icon-btn close" title="Close" onclick="window.ecoliko.close()">×</button>
+    </div>
+  </header>
+
+  <div class="divider"></div>
+
+  <div class="period-bar">
+    <span class="date-display" id="date-display">Today</span>
+    <div class="period-toggle">
+      <button class="period-btn active" id="period-today" onclick="setPeriod('today')">Today</button>
+      <button class="period-btn" id="period-week" onclick="setPeriod('week')">Week</button>
+      <button class="period-btn" id="period-month" onclick="setPeriod('month')">Month</button>
+    </div>
+    <div class="nav-arrows">
+      <button class="nav-btn" id="nav-prev" onclick="navigatePeriod(-1)">&#9664;</button>
+      <button class="nav-btn" id="nav-next" onclick="navigatePeriod(1)">&#9654;</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <section class="metrics">
+    <div class="metric-row">
+      <div class="metric-left">
+        <svg class="metric-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/>
+          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+        </svg>
+        <span class="metric-label">Energy</span>
+      </div>
+      <div class="metric-right">
+        <span class="metric-value" id="energy-value">—</span>
+        <span class="metric-sub" id="energy-raw"></span>
+      </div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-left">
+        <svg class="metric-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+        </svg>
+        <span class="metric-label">Water</span>
+      </div>
+      <div class="metric-right">
+        <span class="metric-value" id="water-value">—</span>
+        <span class="metric-sub" id="water-raw"></span>
+      </div>
+    </div>
+    <div class="water-visual hidden" id="water-visual"></div>
+    <div class="metric-row">
+      <div class="metric-left">
+        <svg class="metric-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
+        </svg>
+        <span class="metric-label">Carbon</span>
+      </div>
+      <div class="metric-right">
+        <span class="metric-value" id="co2-value">—</span>
+        <span class="metric-sub" id="co2-raw"></span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+  <div class="meta-row" id="meta-row">—</div>
+  <div class="divider"></div>
+
+  <section class="history">
+    <div class="section-label">Usage</div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="trackers" id="trackers-section" style="display:none">
+    <div class="section-label">Trackers</div>
+    <div id="trackers-content"></div>
+  </section>
+  <div class="divider" id="trackers-div" style="display:none"></div>
+
+  <div class="divider"></div>
+
+  <p class="tip" id="tip-text">Loading…</p>
+
+  <div class="bottom">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="conn-row">
+        <span class="dot dot-off" id="conn-dot"></span>
+        <span class="conn-label" id="conn-label">Connecting…</span>
+      </div>
+      <button class="poll-btn" id="poll-btn" onclick="pollNow()">Poll</button>
+    </div>
+    <a class="footer-link" onclick="window.ecoliko.openExternal('https://arxiv.org/abs/2505.09598')">
+      Methodology
+      <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </a>
+  </div><!-- /bottom -->
+</div><!-- /view-main -->
+
+
+<!-- ══════════════════ SETTINGS VIEW ══════════════════ -->
+<div class="view" id="view-settings">
+  <div class="drag-bar"></div>
+  <header class="header">
+    <div style="display:flex;align-items:center;gap:8px;-webkit-app-region:no-drag">
+      <button class="icon-btn back-btn" onclick="showView('main')" title="Back">←</button>
+      <span class="view-title">Settings</span>
+    </div>
+    <div class="header-btns"><button class="icon-btn pin-btn" title="Pin window" onclick="togglePin()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></button><button class="icon-btn close" onclick="window.ecoliko.hide()">×</button></div>
+  </header>
+  <div class="divider"></div>
+
+  <div class="settings-body">
+
+    <div class="settings-section">
+      <div class="settings-section-label">General</div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <span class="settings-row-name">Launch at startup</span>
+          <span class="settings-row-desc">Start EcoLiko when you log in</span>
+        </div>
+        <div class="toggle" id="toggle-startup" onclick="toggleStartup()"><div class="toggle-knob"></div></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <span class="settings-row-name">Display mode</span>
+          <span class="settings-row-desc">How EcoLiko appears</span>
+        </div>
+        <div class="toggle-group">
+          <button class="toggle-group-btn active" id="mode-popup-btn" onclick="setDisplayMode('popup')">Popup</button>
+          <button class="toggle-group-btn" id="mode-toolbar-btn" onclick="setDisplayMode('toolbar')">Toolbar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider" style="margin:8px 0"></div>
+
+    <div class="preset-list">
+
+      <div class="preset-item" id="pi-industry" onclick="selectPreset('industry')">
+        <div class="preset-row">
+          <div class="preset-radio" id="pr-industry"><div class="preset-radio-dot"></div></div>
+          <span class="preset-name">Industry</span>
+          <span class="persp-name" id="pn-industry"></span>
+          <div class="persp-nav">
+            <button class="persp-arrow" id="pa-prev-industry" onclick="event.stopPropagation();cyclePersp('industry',-1)">&#8249;</button>
+            <button class="persp-arrow" id="pa-next-industry" onclick="event.stopPropagation();cyclePersp('industry',1)">&#8250;</button>
+          </div>
+        </div>
+        <div class="preset-desc" id="pd-industry"></div>
+        <div class="multiplier-preview" id="mp-industry"></div>
+        <div class="preset-sources" id="ps-industry"></div>
+      </div>
+
+      <div class="preset-item" id="pi-balanced" onclick="selectPreset('balanced')">
+        <div class="preset-row">
+          <div class="preset-radio" id="pr-balanced"><div class="preset-radio-dot"></div></div>
+          <span class="preset-name">Balanced</span>
+          <span class="persp-name" id="pn-balanced"></span>
+          <div class="persp-nav">
+            <button class="persp-arrow" id="pa-prev-balanced" onclick="event.stopPropagation();cyclePersp('balanced',-1)">&#8249;</button>
+            <button class="persp-arrow" id="pa-next-balanced" onclick="event.stopPropagation();cyclePersp('balanced',1)">&#8250;</button>
+          </div>
+        </div>
+        <div class="preset-desc" id="pd-balanced"></div>
+        <div class="multiplier-preview" id="mp-balanced"></div>
+        <div class="preset-sources" id="ps-balanced"></div>
+      </div>
+
+      <div class="preset-item" id="pi-environmental" onclick="selectPreset('environmental')">
+        <div class="preset-row">
+          <div class="preset-radio" id="pr-environmental"><div class="preset-radio-dot"></div></div>
+          <span class="preset-name">Environmental</span>
+          <span class="persp-name" id="pn-environmental"></span>
+          <div class="persp-nav">
+            <button class="persp-arrow" id="pa-prev-environmental" onclick="event.stopPropagation();cyclePersp('environmental',-1)">&#8249;</button>
+            <button class="persp-arrow" id="pa-next-environmental" onclick="event.stopPropagation();cyclePersp('environmental',1)">&#8250;</button>
+          </div>
+        </div>
+        <div class="preset-desc" id="pd-environmental"></div>
+        <div class="multiplier-preview" id="mp-environmental"></div>
+        <div class="preset-sources" id="ps-environmental"></div>
+      </div>
+
+      <div class="preset-item" id="pi-custom" onclick="selectPreset('custom')">
+        <div class="preset-row">
+          <div class="preset-radio" id="pr-custom"><div class="preset-radio-dot"></div></div>
+          <span class="preset-name">Custom</span>
+        </div>
+        <div class="preset-desc">Set your own multipliers relative to the Balanced baseline.</div>
+      </div>
+
+    </div>
+
+    <div class="custom-sliders" id="custom-sliders">
+      <div class="slider-row">
+        <div class="slider-label">Energy multiplier <span id="energy-mult-val">1.0x</span></div>
+        <input type="range" id="sl-energy" min="1" max="100" step="1" value="10" oninput="onSlider()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">Water multiplier <span id="water-mult-val">1.0x</span></div>
+        <input type="range" id="sl-water" min="1" max="100" step="1" value="10" oninput="onSlider()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">Carbon multiplier <span id="co2-mult-val">1.0x</span></div>
+        <input type="range" id="sl-co2" min="1" max="100" step="1" value="10" oninput="onSlider()">
+      </div>
+    </div>
+
+    <p class="settings-note">Multipliers are relative to the Balanced baseline. The gap between Industry and Environmental reflects real methodological disagreement in the literature.</p>
+
+  </div>
+</div><!-- /view-settings -->
+
+
+<!-- ══════════════════ INFO VIEW ══════════════════ -->
+<div class="view" id="view-info">
+  <div class="drag-bar"></div>
+  <header class="header">
+    <div style="display:flex;align-items:center;gap:8px;-webkit-app-region:no-drag">
+      <button class="icon-btn back-btn" onclick="showView('main')" title="Back">←</button>
+      <span class="view-title">How it works</span>
+    </div>
+    <div class="header-btns"><button class="icon-btn pin-btn" title="Pin window" onclick="togglePin()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></button><button class="icon-btn close" onclick="window.ecoliko.hide()">×</button></div>
+  </header>
+  <div class="divider"></div>
+
+  <div class="info-body">
+
+    <div class="info-section">
+      <div class="info-heading">How energy is estimated</div>
+      <p class="info-p">Each AI model has a measured or estimated energy cost per 1,000 tokens processed — separate rates for input (prompt) and output (generation). Output tokens cost roughly 5× more because they are generated one at a time, while the prompt is processed in parallel.</p>
+      <p class="info-p">That raw compute energy is multiplied by the datacenter's <b>PUE</b> (Power Usage Effectiveness) — the ratio of total facility power to IT equipment power. A PUE of 1.10 means 10% overhead for cooling, lighting, and power conversion. Hyperscalers like Google and Microsoft achieve 1.09–1.12; the global industry average is around 1.56.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="info-section">
+      <div class="info-heading">How water is consumed</div>
+      <p class="info-p">Datacenters cool their servers using water — either directly in cooling towers, or indirectly by cooling the air that cools the servers. The key metric is <b>WUE</b> (Water Usage Effectiveness): liters of water consumed per kWh of IT electricity.</p>
+      <p class="info-p">This water is <b>evaporated</b> into the atmosphere, not returned to the local water supply. That distinction matters: withdrawing water from a river and returning it (slightly warmer) is very different from evaporating it — which removes it from the local watershed entirely.</p>
+      <div class="info-callout">
+        <b>On-site vs. off-site water:</b> Companies like Google report only on-site (Scope 1) water — the cooling towers at their datacenters. But the electricity powering those datacenters also requires water at the power plant (Scope 2). Li et al. 2023 found the off-site figure adds roughly 3× more: Google's global average on-site WUE is 1.0 L/kWh; the off-site consumption adds another ~3.1 L/kWh.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="info-section">
+      <div class="info-heading">The water cycle counterargument</div>
+      <p class="info-p">The common objection is that evaporated water eventually returns as rain — so nothing is really "lost." This is true globally. Water is a closed planetary system.</p>
+      <p class="info-p">The problem is <b>geography and timing</b>. Water evaporated in Phoenix, Arizona redistributes across atmospheric circulation patterns — it may fall as rain over the Pacific Ocean, or the midwest, weeks or months later. Meanwhile, Phoenix (and many other datacenter hubs) sits in one of the most water-stressed regions in the world, drawing from the Colorado River, which is already over-allocated.</p>
+      <div class="info-callout">
+        <b>Consumptive use</b> is the term researchers use for water that leaves the local watershed. Even if it returns to the planet, it does not return to the same reservoir, lake, or aquifer. For communities that depend on those water sources, the distinction is real.
+      </div>
+      <p class="info-p">Li et al. 2023 explicitly separates <b>water withdrawal</b> (taken and returned) from <b>water consumption</b> (evaporated, not returned). The figures in EcoLiko use consumption — the more conservative and locally meaningful measure.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="info-section">
+      <div class="info-heading">Uncertainty</div>
+      <p class="info-p">No paper has directly measured the energy of a GPT-4 or Claude inference. Cloud providers do not disclose per-query figures. All estimates — including this app's — are inferred from GPU power specs, public API latency, and published datacenter efficiency metrics. The realistic uncertainty range is 0.3×–3× around any given number.</p>
+      <p class="info-p">The methodology setting lets you explore that range: Industry figures reflect what companies self-report; Environmental figures reflect full lifecycle accounting by independent researchers.</p>
+    </div>
+
+    <div class="info-sources">
+      <button class="info-source-link" onclick="window.ecoliko.openExternal('https://arxiv.org/abs/2304.03271')">Li et al., Making AI Less Thirsty — 2023</button>
+      <button class="info-source-link" onclick="window.ecoliko.openExternal('https://arxiv.org/abs/2311.16863')">Luccioni et al., Power Hungry Processing — NeurIPS 2023</button>
+      <button class="info-source-link" onclick="window.ecoliko.openExternal('https://arxiv.org/abs/2505.09598')">Jegham et al., How Hungry is AI? — 2025</button>
+      <button class="info-source-link" onclick="window.ecoliko.openExternal('https://arxiv.org/abs/2104.10350')">Patterson et al., Carbon Footprint of ML — Nature 2022</button>
+    </div>
+
+  </div>
+</div><!-- /view-info -->
+
+
+<!-- ══════════════════ CALCULATOR VIEW ══════════════════ -->
+<div class="view" id="view-calc">
+  <div class="drag-bar"></div>
+  <header class="header">
+    <div style="display:flex;align-items:center;gap:8px;-webkit-app-region:no-drag">
+      <button class="icon-btn back-btn" onclick="showView('main')" title="Back">←</button>
+      <span class="view-title">Impact Calculator</span>
+    </div>
+    <div class="header-btns"><button class="icon-btn pin-btn" title="Pin window" onclick="togglePin()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></button><button class="icon-btn close" onclick="window.ecoliko.hide()">×</button></div>
+  </header>
+  <div class="divider"></div>
+
+  <div class="calc-body">
+    <div class="calc-field">
+      <label class="calc-label">Model</label>
+      <select class="calc-select" id="calc-model" onchange="calcUpdate()">
+        <option value="claude-opus-4">Claude Opus 4</option>
+        <option value="claude-sonnet-4" selected>Claude Sonnet 4</option>
+        <option value="claude-haiku-3.5">Claude Haiku 3.5</option>
+        <option value="gpt-4o">GPT-4o</option>
+        <option value="gpt-4o-mini">GPT-4o mini</option>
+        <option value="gpt-4.1">GPT-4.1</option>
+        <option value="gpt-4.1-mini">GPT-4.1 mini</option>
+        <option value="gpt-4.1-nano">GPT-4.1 nano</option>
+        <option value="o3">o3</option>
+        <option value="o3-mini">o3-mini</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="minimax-01">MiniMax-01</option>
+        <option value="minimax-02">MiniMax-02</option>
+        <option value="MiniMax-M2.7">MiniMax-M2.7</option>
+        <option value="MiniMax-M2.5">MiniMax-M2.5</option>
+        <option value="deepseek-r1">DeepSeek R1</option>
+        <option value="llama-3.3-70b">Llama 3.3 70B</option>
+        <option value="llama-3.1-8b">Llama 3.1 8B</option>
+        <option value="mistral-large">Mistral Large</option>
+        <option value="default">Other / Unknown</option>
+      </select>
+    </div>
+    <div class="calc-row">
+      <div class="calc-field">
+        <label class="calc-label">Input tokens</label>
+        <input class="calc-input" type="number" id="calc-in" placeholder="e.g. 10000" min="0" oninput="calcUpdate()">
+      </div>
+      <div class="calc-field">
+        <label class="calc-label">Output tokens</label>
+        <input class="calc-input" type="number" id="calc-out" placeholder="e.g. 500" min="0" oninput="calcUpdate()">
+      </div>
+    </div>
+
+    <div class="calc-divider"></div>
+
+    <div class="calc-result" id="calc-result">
+      <div class="calc-empty">Enter token counts above to see estimated impact.</div>
+    </div>
+  </div>
+</div><!-- /view-calc -->
+
+</div><!-- /popup -->
+
+<script>
+// ══════════════════════════════════════════════════════
+// METHODOLOGY PRESETS
+// ══════════════════════════════════════════════════════
+
+const PERSPECTIVES = {
+  industry: [
+    { name: 'Google 2024', desc: 'Self-reported. On-site water only (Scope 1); excludes power-plant cooling. Uses renewable energy certificates to net down carbon — operational only.', mult: { energy: 0.55, water: 0.25, co2: 0.45 }, params: [{ label: 'WUE', value: '1.0 L/kWh (global avg)' }, { label: 'PUE', value: '1.10' }], sources: [{ label: 'Google Environmental Report 2024', url: 'https://sustainability.google/reports/google-2024-environmental-report/' }] },
+    { name: 'Microsoft 2024', desc: 'Self-reported. On-site water only (Scope 1); excludes power-plant cooling. Carbon-neutral pledge covers operational emissions; hardware manufacturing excluded.', mult: { energy: 0.50, water: 0.20, co2: 0.38 }, params: [{ label: 'WUE', value: '0.30 L/kWh (on-site)' }, { label: 'PUE', value: '1.12' }], sources: [{ label: 'Microsoft Environmental Sustainability Report 2024', url: 'https://blogs.microsoft.com/on-the-issues/2024/05/15/microsoft-2024-environmental-sustainability-report/' }] },
+    { name: 'OpenAI', desc: 'No water or energy figures publicly disclosed. Runs on Microsoft Azure. Figures here are inferred from Azure infrastructure parameters.', mult: { energy: 0.35, water: 0.15, co2: 0.30 }, params: [{ label: 'WUE', value: '0.30 L/kWh (Azure)' }, { label: 'PUE', value: '1.12 (Azure)' }], sources: [{ label: 'OpenAI and the Environment', url: 'https://openai.com/global-affairs/openai-and-the-environment' }] },
+  ],
+  balanced: [
+    { name: 'Luccioni et al. 2023', desc: 'Direct API energy measurements across open models. No water figures — energy only. BLOOMz-7B: 0.1 Wh/query; large image models: up to 11 Wh/1K queries. Does not cover GPT-4 class closed models.', mult: { energy: 1.0, water: 1.0, co2: 1.0 }, params: [{ label: 'energy', value: '0.1–11 Wh/query' }, { label: 'water', value: 'not measured' }], sources: [{ label: 'Luccioni et al., Power Hungry Processing — NeurIPS 2023', url: 'https://arxiv.org/abs/2311.16863' }] },
+    { name: 'Jegham et al. 2025', desc: 'Probabilistic API-level estimates across 30+ frontier models using public latency data and provider infrastructure specs. GPT-4o: 1.2 Wh, o3: 5.2 Wh, DeepSeek-R1: 4.3–24.6 Wh per medium query.', mult: { energy: 1.1, water: 1.0, co2: 1.1 }, params: [{ label: 'energy', value: 'GPT-4o 1.2 Wh' }, { label: 'WUE', value: '0.30 L/kWh (Azure)' }], sources: [{ label: 'Jegham et al., How Hungry is AI? — 2025', url: 'https://arxiv.org/abs/2505.09598' }] },
+    { name: 'IEA 2024', desc: 'Global data center electricity analysis. Projects >1,000 TWh by 2026 — roughly Japan\'s total electricity consumption. Reports electricity totals only; no per-query water or energy figures.', mult: { energy: 0.9, water: 0.9, co2: 0.95 }, params: [{ label: 'DCs 2022', value: '460 TWh' }, { label: 'DCs 2026', value: '>1,000 TWh' }], sources: [{ label: 'IEA Electricity 2024', url: 'https://www.iea.org/reports/electricity-2024' }] },
+  ],
+  environmental: [
+    { name: 'Li et al. 2023', desc: 'First systematic accounting of off-site water (Scope 2 — power plant cooling). Off-site adds ~3× on-site. GPT-3 training: 5.4M L total (700K L on-site + 4.7M L off-site). Per response: ~17 mL.', mult: { energy: 1.8, water: 4.5, co2: 2.8 }, params: [{ label: 'WUE on-site', value: '1.0 L/kWh' }, { label: 'WUE off-site', value: '3.1 L/kWh' }], sources: [{ label: 'Li et al., Making AI Less Thirsty — 2023', url: 'https://arxiv.org/abs/2304.03271' }] },
+    { name: 'Patterson et al. 2022', desc: 'Lifecycle energy and carbon analysis; no water figures. GPT-3 training: 1,287 MWh. Key finding: choice of hardware, datacenter location, and energy source can reduce carbon 100–1,000×.', mult: { energy: 2.0, water: 4.0, co2: 3.5 }, params: [{ label: 'GPT-3 train', value: '1,287 MWh' }, { label: 'water', value: 'not measured' }], sources: [{ label: 'Patterson et al., Carbon Footprint of ML — Nature 2022', url: 'https://arxiv.org/abs/2104.10350' }] },
+    { name: 'Goldman Sachs 2024', desc: 'Macro infrastructure projection. AI drives a 165% increase in data center power demand by 2030. Marginal capacity additions are predominantly gas — new AI demand effectively pulls in fossil generation.', mult: { energy: 2.5, water: 5.0, co2: 3.8 }, params: [{ label: 'demand growth', value: '+165% by 2030' }, { label: 'marginal grid', value: 'predominantly gas' }], sources: [{ label: 'Goldman Sachs, AI Power Surge — 2024', url: 'https://www.goldmansachs.com/intelligence/pages/ai-investment-forecast-to-approach-200-billion-globally-by-2025.html' }] },
+  ],
+};
+
+const perspIdx = {
+  industry:      parseInt(localStorage.getItem('persp-industry')      ?? '0', 10),
+  balanced:      parseInt(localStorage.getItem('persp-balanced')      ?? '0', 10),
+  environmental: parseInt(localStorage.getItem('persp-environmental') ?? '0', 10),
+};
+
+let savedPreset = localStorage.getItem('methodology') ?? 'balanced';
+let customMultipliers = JSON.parse(localStorage.getItem('custom-mult') ?? '{"energy":1,"water":1,"co2":1}');
+
+function getMultipliers() {
+  if (savedPreset === 'custom') return customMultipliers;
+  const perps = PERSPECTIVES[savedPreset];
+  if (!perps) return { energy: 1, water: 1, co2: 1 };
+  return perps[perspIdx[savedPreset] ?? 0].mult;
+}
+
+function fmtMult(n) { return n % 1 === 0 ? n + '.0' : String(n); }
+
+function renderPerspective(presetId) {
+  const idx   = perspIdx[presetId];
+  const count = PERSPECTIVES[presetId].length;
+  const p     = PERSPECTIVES[presetId][idx];
+
+  document.getElementById('pn-' + presetId).textContent = p.name;
+  document.getElementById('pd-' + presetId).textContent = p.desc;
+
+  const mpEl = document.getElementById('mp-' + presetId);
+  while (mpEl.firstChild) mpEl.removeChild(mpEl.firstChild);
+  (p.params ?? []).forEach(({ label, value }) => {
+    const chip = document.createElement('span');
+    chip.className = 'mp-chip';
+    chip.textContent = label + ' ' + value;
+    mpEl.appendChild(chip);
+  });
+
+  const psEl = document.getElementById('ps-' + presetId);
+  while (psEl.firstChild) psEl.removeChild(psEl.firstChild);
+  p.sources.forEach(src => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-source-link';
+    btn.textContent = src.label;
+    btn.onclick = e => { e.stopPropagation(); window.ecoliko.openExternal(src.url); };
+    psEl.appendChild(btn);
+  });
+
+  const prevBtn = document.getElementById('pa-prev-' + presetId);
+  const nextBtn = document.getElementById('pa-next-' + presetId);
+  if (prevBtn) prevBtn.disabled = idx === 0;
+  if (nextBtn) nextBtn.disabled = idx === count - 1;
+}
+
+function cyclePersp(presetId, dir) {
+  const count = PERSPECTIVES[presetId].length;
+  perspIdx[presetId] = Math.max(0, Math.min(count - 1, perspIdx[presetId] + dir));
+  localStorage.setItem('persp-' + presetId, perspIdx[presetId]);
+  renderPerspective(presetId);
+  if (savedPreset === presetId) refreshMain();
+}
+
+function applyPresetUI() {
+  ['industry','balanced','environmental','custom'].forEach(id => {
+    document.getElementById('pi-' + id).classList.toggle('selected', id === savedPreset);
+    document.getElementById('pr-' + id).classList.toggle('selected', id === savedPreset);
+  });
+  document.getElementById('custom-sliders').classList.toggle('visible', savedPreset === 'custom');
+  renderPerspective('industry');
+  renderPerspective('balanced');
+  renderPerspective('environmental');
+}
+
+function selectPreset(id) {
+  savedPreset = id;
+  localStorage.setItem('methodology', id);
+  applyPresetUI();
+  refreshMain();
+}
+
+function onSlider() {
+  const e = document.getElementById('sl-energy').value / 10;
+  const w = document.getElementById('sl-water').value / 10;
+  const c = document.getElementById('sl-co2').value / 10;
+  document.getElementById('energy-mult-val').textContent = e.toFixed(1) + '×';
+  document.getElementById('water-mult-val').textContent = w.toFixed(1) + '×';
+  document.getElementById('co2-mult-val').textContent = c.toFixed(1) + '×';
+  customMultipliers = { energy: e, water: w, co2: c };
+  localStorage.setItem('custom-mult', JSON.stringify(customMultipliers));
+  refreshMain();
+}
+
+// ══════════════════════════════════════════════════════
+// FORMATTING
+// ══════════════════════════════════════════════════════
+
+function fmtEnergyRaw(kwh) {
+  if (kwh < 0.001) return `${(kwh * 1e6).toFixed(1)} μWh`;
+  if (kwh < 1)     return `${(kwh * 1000).toFixed(1)} Wh`;
+  return `${kwh.toFixed(3)} kWh`;
+}
+
+/** Appliance equivalents: bulb → microwave → AC */
+function describeEnergy(kwh) {
+  const wh = kwh * 1000;
+  if (wh < 1)      return fmtEnergyRaw(kwh);
+  if (wh < 10)     return `${wh.toFixed(1)}h of a 10W bulb`;
+  if (wh < 1000)   return `${(wh / 10).toFixed(0)}h of a 10W bulb`;
+  if (kwh < 0.1)   return `${(wh / 10).toFixed(0)}h of a 10W bulb`;
+  if (kwh < 2)     return `${(kwh * 60).toFixed(0)} min in a microwave`;
+  if (kwh < 15)    return `${kwh.toFixed(1)}h in a microwave`;
+  return `${(kwh / 1.2).toFixed(1)}h of air conditioning`;
+}
+
+function fmtWaterRaw(liters) {
+  const ml = liters * 1000;
+  if (ml < 1)    return `${(ml * 1000).toFixed(1)} μL`;
+  if (ml < 1000) return `${ml.toFixed(1)} mL`;
+  return `${liters.toFixed(2)} L`;
+}
+
+function renderWaterVisual(liters) {
+  const el = document.getElementById('water-visual');
+  if (!el) return;
+  const ml = liters * 1000;
+  if (ml < 1) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+
+  // Container sizes (mL)
+  const JUG = 3785, BOTTLE = 2000, CUP = 250;
+  // Max items per type to keep layout compact (total capped at 7)
+  const MAX_ITEMS = 7;
+
+  const items = []; // { type, fill }
+  let rem = ml;
+
+  // Greedy: jugs first
+  if (rem >= JUG) {
+    const full = Math.floor(rem / JUG);
+    rem -= full * JUG;
+    for (let i = 0; i < full && items.length < MAX_ITEMS; i++) items.push({ type: 'jug', fill: 1 });
+  }
+
+  // Bottles
+  if (rem >= BOTTLE) {
+    const full = Math.floor(rem / BOTTLE);
+    rem -= full * BOTTLE;
+    for (let i = 0; i < full && items.length < MAX_ITEMS; i++) items.push({ type: 'bottle', fill: 1 });
+  }
+
+  // Full cups only (no partial cup SVGs — remainder shown as parenthetical)
+  if (rem >= CUP && items.length < MAX_ITEMS) {
+    const full = Math.floor(rem / CUP);
+    rem -= full * CUP;
+    for (let i = 0; i < full && items.length < MAX_ITEMS; i++) items.push({ type: 'cup', fill: 1 });
+  }
+
+  // Any remainder after full cups → parenthetical "(X.X bottles)" instead of partial cup
+  let partialBottles = 0;
+  if (rem > 0) {
+    partialBottles = rem / BOTTLE;
+    // If we couldn't fit full cups either, count them as overflow
+    if (rem >= CUP && items.length >= MAX_ITEMS) {
+      const overflowCups = Math.ceil(rem / CUP);
+      partialBottles = 0; // we'll show +X cups instead
+      const extraCount = overflowCups;
+      let html = '';
+      let svgIdx = 0;
+      for (const item of items) {
+        html += wvSvg(item.type, item.fill, svgIdx++);
+      }
+      if (extraCount > 0) {
+        html += `<div class="wv-item" style="justify-content:flex-end;padding-bottom:2px"><span style="font-size:9px;color:var(--text-3)">+${extraCount} cups</span></div>`;
+      }
+      el.innerHTML = html;
+      return;
+    }
+  }
+
+  // Count total containers needed (for the "+X more" badge)
+  let totalContainers = 0;
+  let r2 = ml;
+  if (r2 >= JUG) totalContainers += Math.floor(r2 / JUG), r2 = r2 % JUG;
+  if (r2 >= BOTTLE) totalContainers += Math.floor(r2 / BOTTLE), r2 = r2 % BOTTLE;
+  if (r2 >= CUP) totalContainers += Math.ceil(r2 / CUP);
+  const extraCount = Math.max(0, totalContainers - items.length - (partialBottles > 0 ? 1 : 0));
+
+  let html = '';
+  let svgIdx = 0;
+  for (const item of items) {
+    html += wvSvg(item.type, item.fill, svgIdx++);
+  }
+  if (partialBottles > 0 && items.length < MAX_ITEMS) {
+    html += `<div class="wv-item" style="justify-content:center;padding-bottom:2px"><span style="font-size:10px;color:var(--text-3)">(${partialBottles.toFixed(1)} bottles)</span></div>`;
+  }
+  if (extraCount > 0) {
+    html += `<div class="wv-item" style="justify-content:flex-end;padding-bottom:2px"><span style="font-size:9px;color:var(--text-3)">+${extraCount}</span></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function wvSvg(type, fill, idx) {
+  const id = 'wv-' + idx;
+  let vb, w, h, shape, cap, handle, drawH, topY;
+  if (type === 'cup') {
+    // Coffee mug — small (250 mL)
+    vb='0 0 22 28'; w=18; h=28;
+    shape='M3,4 L17,4 L15,26 L5,26 Z';
+    cap='';
+    handle='<path d="M17,8 Q22,8 22,14 Q22,20 17,20" fill="none" stroke="#3d6b4f" stroke-width="1.3" opacity="0.5"/>';
+    drawH=22; topY=4;
+  } else if (type === 'bottle') {
+    // 2L bottle — medium
+    vb='0 0 24 48'; w=22; h=44;
+    shape='M8,2 L16,2 L16,7 L19,11 L19,46 L5,46 L5,11 L8,7 Z';
+    cap='<rect x="7" y="0" width="10" height="3" rx="1" fill="#3d6b4f" opacity="0.5"/>';
+    handle=''; drawH=44; topY=2;
+  } else {
+    // Gallon jug — large (3,785 mL)
+    vb='0 0 30 50'; w=28; h=48;
+    shape='M3,8 L3,46 L23,46 L23,8 L19,8 L19,3 L9,3 L9,8 Z';
+    cap='';
+    handle='<path d="M23,16 Q29,16 29,24 Q29,32 23,32" fill="none" stroke="#3d6b4f" stroke-width="1.5" opacity="0.6"/>';
+    drawH=38; topY=8;
+  }
+  const fillPx = Math.round(fill * drawH);
+  const rectY  = (topY + drawH) - fillPx;
+  return '<div class="wv-item">'
+    + '<svg viewBox="' + vb + '" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">'
+    + '<defs><clipPath id="' + id + '"><path d="' + shape + '"/></clipPath></defs>'
+    + cap
+    + '<rect x="0" y="' + rectY + '" width="' + (w + 10) + '" height="' + (h + 10) + '" fill="#3d6b4f" opacity="0.35" clip-path="url(#' + id + ')"/>'
+    + '<path d="' + shape + '" fill="none" stroke="#3d6b4f" stroke-width="1.5" stroke-linejoin="round"/>'
+    + handle
+    + '</svg></div>';
+}
+
+function describeWater(liters) {
+  const ml = liters * 1000;
+  if (ml < 5)     return fmtWaterRaw(liters);
+  if (ml < 125)   return '< 1 cup';
+  if (ml < 375)   return '~1 cup';
+  if (ml < 2000)  return `${(ml / 250).toFixed(1)} cups`;
+  if (ml < 3785)  return `${(ml / 2000).toFixed(1)} bottles`;
+  return `${(ml / 3785).toFixed(2)} gallons`;
+}
+
+function fmtCO2Raw(grams) {
+  if (grams < 1)      return `${(grams * 1000).toFixed(1)} mg`;
+  if (grams >= 1000)  return `${(grams / 1000).toFixed(2)} kg`;
+  return `${grams.toFixed(1)} g`;
+}
+
+function describeCO2(grams) {
+  if (grams < 10)    return fmtCO2Raw(grams);
+  if (grams < 120)   return '< 1 km driven';
+  if (grams < 12000) return `${(grams / 120).toFixed(1)} km driven`;
+  return `${(grams / 120000).toFixed(1)}K km driven`;
+}
+
+function fmt(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return String(n);
+}
+
+function getTip(t) {
+  if (!t || t.eventCount === 0)  return 'Start using AI tools — EcoLiko will track your impact.';
+  const g = t.ecoScore?.grade;
+  if (g === 'A+' || g === 'A')  return 'Your AI usage is on the low-impact end today.';
+  if (g === 'F')                 return 'Consider smaller models (Haiku, Flash, Mini) for simple tasks.';
+  if (t.totalTokens > 100_000)   return 'Reduce token usage with smarter memory management: github.com/mem0ai/mem0';
+  return 'Smaller models use ~60% less energy for equivalent simple tasks.';
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ══════════════════════════════════════════════════════
+// MAIN VIEW RENDERING
+// ══════════════════════════════════════════════════════
+
+const KNOWN_TRACKERS = [
+  { platform: 'claude',      name: 'Claude' },
+  { platform: 'claude-code', name: 'Claude Code' },
+  { platform: 'cursor',      name: 'Cursor' },
+  { platform: 'codex',       name: 'OpenAI Codex' },
+  { platform: 'minimax',     name: 'MiniMax' },
+  { platform: 'ollama',      name: 'Ollama' },
+];
+const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+let _lastSnap = null;
+let _lastDays = null;
+let _currentPeriod = 'today';
+let _periodOffset = 0;
+
+async function setPeriod(period) {
+  _currentPeriod = period;
+  _periodOffset = 0;
+  document.getElementById('period-today').classList.toggle('active', period === 'today');
+  document.getElementById('period-week').classList.toggle('active', period === 'week');
+  document.getElementById('period-month').classList.toggle('active', period === 'month');
+  updatePeriodLabel();
+  await load();
+}
+
+async function navigatePeriod(delta) {
+  _periodOffset -= delta;
+  updatePeriodLabel();
+  await load();
+}
+
+function updatePeriodLabel() {
+  const label = document.getElementById('date-display');
+  const now = new Date();
+
+  if (_currentPeriod === 'today') {
+    const d = new Date(now);
+    d.setDate(d.getDate() - _periodOffset);
+    label.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } else if (_currentPeriod === 'week') {
+    const weekEnd = new Date(now);
+    weekEnd.setDate(weekEnd.getDate() - (_periodOffset * 7));
+    const weekStart = new Date(weekEnd);
+    weekStart.setDate(weekStart.getDate() - 6);
+    label.textContent = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  } else if (_currentPeriod === 'month') {
+    const d = new Date(now.getFullYear(), now.getMonth() - _periodOffset, 1);
+    label.textContent = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+}
+
+async function refreshMain() {
+  console.log('[EcoLiko] refreshMain(), _currentPeriod:', _currentPeriod, '_lastDays length:', _lastDays?.length);
+  const periodTotals = sumDayTotals(_lastDays);
+  const displayTotals = periodTotals ?? (_lastSnap?.totals ?? null);
+  if (displayTotals) renderTotals(displayTotals, _lastSnap?._source === 'companion', _currentPeriod);
+  if (_lastDays) renderChart(_lastDays, _currentPeriod);
+}
+
+function applyMult(totals) {
+  const m = getMultipliers();
+  if (!totals?.impact) return totals;
+  return {
+    ...totals,
+    impact: {
+      energyKwh:   totals.impact.energyKwh   * (m.energy ?? 1),
+      waterLiters: totals.impact.waterLiters  * (m.water  ?? 1),
+      co2Grams:    totals.impact.co2Grams     * (m.co2    ?? 1),
+    },
+    byPlatform: (totals.byPlatform || []).map(pb => ({
+      ...pb,
+      impact: {
+        energyKwh:   pb.impact.energyKwh   * (m.energy ?? 1),
+        waterLiters: pb.impact.waterLiters  * (m.water  ?? 1),
+        co2Grams:    pb.impact.co2Grams     * (m.co2    ?? 1),
+      },
+      models: (pb.models || []).map(mo => ({
+        ...mo,
+        impact: {
+          energyKwh:   mo.impact.energyKwh   * (m.energy ?? 1),
+          waterLiters: mo.impact.waterLiters  * (m.water  ?? 1),
+          co2Grams:    mo.impact.co2Grams     * (m.co2    ?? 1),
+        }
+      }))
+    }))
+  };
+}
+
+function renderChart(days, period = 'week') {
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  if (!days?.length) return;
+  const maxTok = Math.max(...days.map(d => d.totals.totalTokens), 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nowHour = new Date().getHours();
+
+  days.forEach((d, i) => {
+    const date = new Date(d.date + 'T00:00:00');
+    let label = '';
+
+    if (period === 'month') {
+      label = (i % 2 === 0) ? String(date.getDate()) : '';
+    } else if (period === 'today') {
+      const h = d.hour ?? 0;
+      if      (h === 0)  label = '12a';
+      else if (h === 6)  label = '6a';
+      else if (h === 12) label = '12p';
+      else if (h === 18) label = '6p';
+      else               label = '';
+    } else {
+      label = DAY_LABELS[date.getDay()];
+    }
+
+    const frac = d.totals.totalTokens / maxTok;
+    const h = Math.max(3, frac * 52);
+    const isActive = period === 'today'
+      ? (date.getTime() === today.getTime() && (d.hour ?? 0) === nowHour)
+      : date.getTime() === today.getTime();
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar';
+    bar.style.height = h + 'px';
+    bar.style.background = isActive
+      ? (frac > .7 ? '#a63d3d' : frac > .3 ? '#b5883a' : '#3d6b4f')
+      : (frac > .7 ? '#dba0a0' : frac > .3 ? '#e0c98a' : '#9dbfaa');
+    const titleLabel = period === 'today' ? `${d.date} ${(d.hour ?? 0).toString().padStart(2,'0')}:00` : d.date;
+    bar.title = `${titleLabel}: ${d.totals.totalTokens.toLocaleString()} tokens`;
+    const lbl = document.createElement('div');
+    lbl.className = 'chart-bar-label';
+    lbl.textContent = label;
+    bar.appendChild(lbl);
+    chart.appendChild(bar);
+  });
+}
+
+/** Sum per-day totals from getDays() into a single period totals object */
+function sumDayTotals(days) {
+  if (!days?.length) return null;
+
+  // Platform+model accumulation maps
+  const platformMap = new Map(); // platform -> { events, inputTokens, outputTokens, energyKwh, waterLiters, co2Grams, models: Map }
+
+  const t = days.reduce((acc, d) => {
+    acc.totalInputTokens  += d.totals.totalInputTokens;
+    acc.totalOutputTokens += d.totals.totalOutputTokens;
+    acc.totalTokens       += d.totals.totalTokens;
+    acc.impact.energyKwh  += d.totals.impact.energyKwh;
+    acc.impact.waterLiters+= d.totals.impact.waterLiters;
+    acc.impact.co2Grams   += d.totals.impact.co2Grams;
+    acc.eventCount        += d.totals.eventCount;
+
+    // Accumulate byPlatform data
+    for (const pb of (d.totals.byPlatform || [])) {
+      if (!platformMap.has(pb.platform)) {
+        platformMap.set(pb.platform, {
+          events: 0, inputTokens: 0, outputTokens: 0,
+          energyKwh: 0, waterLiters: 0, co2Grams: 0,
+          models: new Map(),
+        });
+      }
+      const p = platformMap.get(pb.platform);
+      p.events += pb.events;
+      p.inputTokens += pb.inputTokens;
+      p.outputTokens += pb.outputTokens;
+      p.energyKwh += pb.impact.energyKwh;
+      p.waterLiters += pb.impact.waterLiters;
+      p.co2Grams += pb.impact.co2Grams;
+
+      for (const mb of (pb.models || [])) {
+        if (!p.models.has(mb.model)) {
+          p.models.set(mb.model, { events: 0, inputTokens: 0, outputTokens: 0, energyKwh: 0, waterLiters: 0, co2Grams: 0 });
+        }
+        const m = p.models.get(mb.model);
+        m.events += mb.events;
+        m.inputTokens += mb.inputTokens;
+        m.outputTokens += mb.outputTokens;
+        m.energyKwh += mb.impact.energyKwh;
+        m.waterLiters += mb.impact.waterLiters;
+        m.co2Grams += mb.impact.co2Grams;
+      }
+    }
+    return acc;
+  }, {
+    totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0,
+    impact: { energyKwh: 0, waterLiters: 0, co2Grams: 0 },
+    eventCount: 0, byPlatform: [],
+    ecoScore: { grade: 'B', value: 50 },
+  });
+
+  // Convert platformMap to byPlatform array
+  const byPlatform = [];
+  for (const [platform, p] of platformMap) {
+    const models = [];
+    for (const [model, m] of p.models) {
+      models.push({
+        model,
+        events: m.events,
+        inputTokens: m.inputTokens,
+        outputTokens: m.outputTokens,
+        impact: { energyKwh: m.energyKwh, waterLiters: m.waterLiters, co2Grams: m.co2Grams },
+      });
+    }
+    models.sort((a, b) => b.energyKwh - a.energyKwh);
+    byPlatform.push({
+      platform,
+      events: p.events,
+      inputTokens: p.inputTokens,
+      outputTokens: p.outputTokens,
+      impact: { energyKwh: p.energyKwh, waterLiters: p.waterLiters, co2Grams: p.co2Grams },
+      models,
+    });
+  }
+  byPlatform.sort((a, b) => b.impact.energyKwh - a.impact.energyKwh);
+  t.byPlatform = byPlatform;
+
+  // Recompute ecoScore grade from aggregated tokens/events
+  const ratio = t.totalTokens / Math.max(t.eventCount, 1);
+  if (ratio > 5000)       t.ecoScore = { grade: 'F', value: 10 };
+  else if (ratio > 2000)  t.ecoScore = { grade: 'D', value: 30 };
+  else if (ratio > 500)   t.ecoScore = { grade: 'C', value: 55 };
+  else if (ratio > 100)  t.ecoScore = { grade: 'B', value: 75 };
+  else if (ratio > 20)    t.ecoScore = { grade: 'A', value: 90 };
+  else                    t.ecoScore = { grade: 'A+', value: 98 };
+  return t;
+}
+
+function renderTotals(rawTotals, connected, period = 'today') {
+  if (!rawTotals) return;
+  const t = applyMult(rawTotals);
+
+  document.getElementById('energy-value').textContent = describeEnergy(t.impact.energyKwh);
+  document.getElementById('energy-raw').textContent   = fmtEnergyRaw(t.impact.energyKwh);
+  document.getElementById('water-value').textContent  = describeWater(t.impact.waterLiters);
+  renderWaterVisual(t.impact.waterLiters);
+  document.getElementById('water-raw').textContent    = fmtWaterRaw(t.impact.waterLiters);
+  document.getElementById('co2-value').textContent    = describeCO2(t.impact.co2Grams);
+  document.getElementById('co2-raw').textContent      = fmtCO2Raw(t.impact.co2Grams);
+
+  const s = t.eventCount === 1 ? '' : 's';
+  let periodLabel = '';
+  if (period === 'week') periodLabel = ' <span style="color:var(--text-3);font-weight:400">(7 days)</span>';
+  else if (period === 'month') periodLabel = ' <span style="color:var(--text-3);font-weight:400">(30 days)</span>';
+  const gradeLabel = t.ecoScore?.grade ? ` <span style="font-weight:600;color:var(--accent)">${t.ecoScore.grade}</span>` : '';
+  document.getElementById('meta-row').innerHTML =
+    `<b>${t.eventCount.toLocaleString()}</b> interaction${s}${periodLabel}${gradeLabel} &middot; <b>${fmt(t.totalInputTokens)}</b> in + <b>${fmt(t.totalOutputTokens)}</b> out`;
+
+  document.getElementById('tip-text').textContent = getTip(t);
+
+  const platforms = t.byPlatform || [];
+  const activeKeys = new Set(platforms.map(p => p.platform));
+  const section = document.getElementById('trackers-section');
+  const div = document.getElementById('trackers-div');
+  section.style.display = '';
+  div.style.display = '';
+  if (platforms.length > 0) {
+    const undetected = KNOWN_TRACKERS.filter(tk => !activeKeys.has(tk.platform));
+    const undetectedHtml = undetected.length ? `
+      <div class="undetected-row">
+        <span class="undetected-item" style="font-size:10px;color:var(--text-3);margin-right:2px">also monitoring:</span>
+        ${undetected.map(tk => `<span class="undetected-item" style="opacity:0.6">${esc(tk.name)}</span>`).join('')}
+      </div>` : '';
+    document.getElementById('trackers-content').innerHTML = platforms.map(pb => `
+      <div class="tracker-block">
+        <div class="tracker-name">
+          <div class="tracker-dot"></div>
+          ${esc(pb.platform)}
+          <span class="tracker-events">${fmt(pb.inputTokens)} in &middot; ${fmt(pb.outputTokens)} out</span>
+        </div>
+        <table>
+          <thead><tr><th>Model</th><th>Tokens</th><th>Energy</th><th>CO₂</th></tr></thead>
+          <tbody>${(pb.models||[]).map(m => `<tr>
+            <td>${esc(m.model)}</td>
+            <td>${fmt(m.inputTokens)}+${fmt(m.outputTokens)}</td>
+            <td>${fmtEnergyRaw(m.impact.energyKwh)}</td>
+            <td>${fmtCO2Raw(m.impact.co2Grams)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`).join('') + undetectedHtml;
+  } else {
+    document.getElementById('trackers-content').innerHTML = `
+      <div style="font-size:11px;color:var(--text-3);padding:2px 0 4px">
+        No activity in this period &mdash; monitoring:
+        ${KNOWN_TRACKERS.map(tk => `<span style="color:var(--text-2);margin-left:4px">${esc(tk.name)}</span>`).join('')}
+      </div>`;
+  }
+
+  document.getElementById('conn-dot').className = connected ? 'dot dot-on' : 'dot dot-off';
+  document.getElementById('conn-label').textContent = connected ? 'Live' : 'No companion (data may be stale)';
+}
+
+// ══════════════════════════════════════════════════════
+// CALCULATOR
+// ══════════════════════════════════════════════════════
+
+// Energy profiles (kWh per 1K tokens, from @ecoliko/core constants)
+const PROFILES = {
+  'claude-opus-4':    { i: 0.0005,  o: 0.0025 },
+  'claude-sonnet-4':  { i: 0.00025, o: 0.0015 },
+  'claude-haiku-3.5': { i: 0.00005, o: 0.00025 },
+  'gpt-4o':           { i: 0.00012, o: 0.00060 },
+  'gpt-4.1':          { i: 0.00012, o: 0.00060 },
+  'gpt-4o-mini':      { i: 0.00003, o: 0.00015 },
+  'gpt-4.1-mini':     { i: 0.00003, o: 0.00015 },
+  'gpt-4.1-nano':     { i: 0.00002, o: 0.00009 },
+  'o3':               { i: 0.0005,  o: 0.0025 },
+  'o3-mini':          { i: 0.00015, o: 0.00075 },
+  'gemini-2.5-pro':   { i: 0.00015, o: 0.00075 },
+  'gemini-2.5-flash': { i: 0.00003, o: 0.00015 },
+  'deepseek-r1':      { i: 0.00050, o: 0.00250 },
+  'llama-3.3-70b':    { i: 0.00008, o: 0.00040 },
+  'llama-3.1-8b':     { i: 0.00002, o: 0.00010 },
+  'mistral-large':    { i: 0.00012, o: 0.00060 },
+  'minimax-01':       { i: 0.00010, o: 0.00050 },
+  'minimax-02':       { i: 0.00012, o: 0.00060 },
+  'MiniMax-M2.7':     { i: 0.00012, o: 0.00060 },
+  'MiniMax-M2.5':     { i: 0.00010, o: 0.00050 },
+  'default':          { i: 0.00012, o: 0.00060 },
+};
+const PUE = 1.15, WUE = 0.26, CO2_INTENSITY = 370; // g/kWh
+
+function calcUpdate() {
+  const model  = document.getElementById('calc-model').value;
+  const inTok  = parseFloat(document.getElementById('calc-in').value)  || 0;
+  const outTok = parseFloat(document.getElementById('calc-out').value) || 0;
+  const result = document.getElementById('calc-result');
+
+  if (inTok === 0 && outTok === 0) {
+    result.innerHTML = '<div class="calc-empty">Enter token counts above to see estimated impact.</div>';
+    return;
+  }
+
+  const p = PROFILES[model] ?? PROFILES['default'];
+  const rawEnergy = (inTok / 1000 * p.i) + (outTok / 1000 * p.o);
+  const energy = rawEnergy * PUE;
+  const water  = energy * WUE;
+  const co2    = energy * CO2_INTENSITY;
+
+  const m = getMultipliers();
+  const ae = energy * (m.energy ?? 1);
+  const aw = water  * (m.water  ?? 1);
+  const ac = co2    * (m.co2    ?? 1);
+
+  result.innerHTML = `
+    <div class="calc-result-row">
+      <div class="calc-metric-left">
+        <svg class="calc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/>
+          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+        </svg>
+        <span class="calc-metric-name">Energy</span>
+      </div>
+      <div class="calc-metric-right">
+        <span class="calc-metric-val">${describeEnergy(ae)}</span>
+        <span class="calc-metric-sub">${fmtEnergyRaw(ae)}</span>
+      </div>
+    </div>
+    <div class="calc-result-row">
+      <div class="calc-metric-left">
+        <svg class="calc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+        </svg>
+        <span class="calc-metric-name">Water</span>
+      </div>
+      <div class="calc-metric-right">
+        <span class="calc-metric-val">${describeWater(aw)}</span>
+        <span class="calc-metric-sub">${fmtWaterRaw(aw)}</span>
+      </div>
+    </div>
+    <div class="calc-result-row">
+      <div class="calc-metric-left">
+        <svg class="calc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
+        </svg>
+        <span class="calc-metric-name">Carbon</span>
+      </div>
+      <div class="calc-metric-right">
+        <span class="calc-metric-val">${describeCO2(ac)}</span>
+        <span class="calc-metric-sub">${fmtCO2Raw(ac)}</span>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW NAVIGATION + DATA LOADING
+// ══════════════════════════════════════════════════════
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  if (id === 'settings') applyPresetUI();
+}
+
+async function load() {
+  const chartPeriod = _currentPeriod === 'today' ? 'hour' : _currentPeriod;
+  console.log('[EcoLiko] load() called, chartPeriod:', chartPeriod, '_currentPeriod:', _currentPeriod, '_periodOffset:', _periodOffset);
+  const [snap, days] = await Promise.all([
+    window.ecoliko.getData(),
+    window.ecoliko.getDays(chartPeriod, _periodOffset),
+  ]);
+  console.log('[EcoLiko] getData() returned:', JSON.stringify(snap)?.slice(0, 200));
+  console.log('[EcoLiko] getDays() returned:', days?.length, 'days, first few:', JSON.stringify(days?.slice(0, 3)));
+  _lastSnap = snap;
+  _lastDays = days;
+
+  // Compute period-specific totals from the per-day chart data
+  const periodTotals = sumDayTotals(days);
+  // Merge: use periodTotals for impact metrics but keep snap data for connection status
+  const displayTotals = periodTotals ?? (_lastSnap?.totals ?? null);
+
+  updatePeriodLabel();
+  // Use period-aware totals instead of lifetime totals from getData()
+  if (displayTotals) renderTotals(displayTotals, _lastSnap?._source === 'companion', _currentPeriod);
+  if (days) renderChart(days, _currentPeriod);
+}
+
+async function pollNow() {
+  const btn = document.getElementById('poll-btn');
+  btn.textContent = '…'; btn.classList.add('busy'); btn.disabled = true;
+  await window.ecoliko.pollNow();
+  setTimeout(async () => {
+    await load();
+    btn.textContent = 'Poll'; btn.classList.remove('busy'); btn.disabled = false;
+  }, 2500);
+}
+
+let isPinned = localStorage.getItem('pinned') === '1';
+function togglePin() {
+  isPinned = !isPinned;
+  localStorage.setItem('pinned', isPinned ? '1' : '0');
+  applyPinUI();
+  window.ecoliko.setPin?.(isPinned);
+}
+function applyPinUI() {
+  document.querySelectorAll('.pin-btn').forEach(b => b.classList.toggle('active', isPinned));
+}
+
+applyPresetUI();
+applyPinUI();
+window.ecoliko.setPin?.(isPinned);
+load();
+window.ecoliko.onSnapshot(() => load());
+
+async function toggleStartup() {
+  const toggles = document.getElementById('toggle-startup');
+  const current = localStorage.getItem('startup') === '1';
+  const next = !current;
+  localStorage.setItem('startup', next ? '1' : '0');
+  toggles.classList.toggle('on', next);
+  await window.ecoliko.setStartup?.(next);
+}
+async function setDisplayMode(mode) {
+  document.getElementById('mode-popup-btn').classList.toggle('active', mode === 'popup');
+  document.getElementById('mode-toolbar-btn').classList.toggle('active', mode === 'toolbar');
+  localStorage.setItem('displayMode', mode);
+  await window.ecoliko.setDisplayMode?.(mode);
+}
+async function initSettingsUI() {
+  const startupOn = localStorage.getItem('startup') === '1';
+  document.getElementById('toggle-startup').classList.toggle('on', startupOn);
+  const dm = localStorage.getItem('displayMode') || 'popup';
+  document.getElementById('mode-popup-btn').classList.toggle('active', dm === 'popup');
+  document.getElementById('mode-toolbar-btn').classList.toggle('active', dm === 'toolbar');
+}
+initSettingsUI();
+</script>
+</body>
+</html>

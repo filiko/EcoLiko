@@ -1,0 +1,26 @@
+{
+  "name": "@ecoliko/companion",
+  "version": "0.2.0",
+  "description": "EcoLiko companion app — unified store, HTTP API, system tray, log polling",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "ecoliko-companion": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ecoliko/core": "0.1.0",
+    "ecoliko": "0.1.0",
+    "systray2": "^2.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "license": "MIT"
+}
