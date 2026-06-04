@@ -1,6 +1,6 @@
 <div align="center">
 
-# ecoliko
+# EcoLiko
 
 **what your AI actually costs**
 
@@ -12,7 +12,7 @@ Track the water, electricity, and CO2 footprint of your AI usage across every to
 
 ---
 
-EcoLiko is a monorepo of tools that estimate the environmental impact of AI/LLM usage. It reads logs from Claude Code, Codex CLI, and browser-based AI tools, then converts token counts into energy, water, and carbon estimates using peer-reviewed research.
+EcoLiko is a monorepo of tools that estimate the environmental impact of AI/LLM usage. Working on the Desktop version right now but it started as a browser extension.
 
 ## Getting Started
 
@@ -24,6 +24,48 @@ npm run build
 ```
 
 Requires Node.js 18+.
+
+
+## How It Works
+
+```
+token count → energy per model (kWh/1K tokens) → water (datacenter WUE) → CO₂ (grid intensity)
+```
+
+See [`docs/methodology.md`](docs/methodology.md) for the full breakdown.
+
+You have the option of how conservative the estimates are, based on the studies/assertions of academic research, activists, industry analysts, or industry plants.
+
+### The difference between them is actually fun to see
+
+1. **Token counting** — parses logs or intercepts API streams to extract input/output token counts per model.
+2. **Energy estimation** — multiplies tokens by model-specific energy profiles sourced from peer-reviewed measurements ([arXiv 2505.09598](https://arxiv.org/abs/2505.09598), [arXiv 2511.05597](https://arxiv.org/abs/2511.05597), Epoch AI 2025).
+3. **Water** — applies datacenter Water Usage Effectiveness (WUE) factors per cloud provider (AWS, Google, Microsoft, Meta sustainability reports).
+4. **CO2** — applies regional grid carbon intensity (EPA eGRID 2023, IEA 2025, Ember 2025).
+5. **Scoring** — rolls everything into a daily eco score (A+ through F) based on total token volume and model efficiency.
+
+
+## Desktop App
+
+```bash
+cd packages/desktop
+npm run start
+```
+
+Adds a leaf icon to your system tray. Click it for a live dashboard popup showing today's impact, 7-day history, and per-model breakdowns.
+
+## Supported Models
+
+60+ models including GPT-4o/4.1, Claude Opus/Sonnet/Haiku, Gemini 2.5, Llama 3/4, DeepSeek, Mistral, Grok, Qwen, and more. Local models (Ollama, LM Studio) use separate energy profiles that account for consumer GPU efficiency. Unknown models fall back to a conservative default.
+
+## Browser Extension
+
+```bash
+cd packages/extension
+npm run build
+```
+
+Load `packages/extension/dist/` as an unpacked extension in Chrome/Edge, or `dist-firefox/` in Firefox. Tracks ChatGPT, Claude.ai, and Gemini automatically.
 
 ### Quick check
 
@@ -43,7 +85,6 @@ npx ecoliko status
   ☁  CO₂:     3.9 g
 ```
 
-Auto-detects Claude Code and Codex CLI logs. No API keys or config needed.
 
 ## Packages
 
@@ -57,20 +98,6 @@ Auto-detects Claude Code and Codex CLI logs. No API keys or config needed.
 | [`packages/vscode-extension`](packages/vscode-extension) | VS Code/Cursor/Windsurf extension — status bar widget with live impact |
 | [`packages/openclaw`](packages/openclaw) | Snapshot daemon — periodic log collection for offline/remote machines |
 
-## How It Works
-
-```
-token count → energy per model (kWh/1K tokens) → water (datacenter WUE) → CO₂ (grid intensity)
-```
-
-1. **Token counting** — parses logs or intercepts API streams to extract input/output token counts per model.
-2. **Energy estimation** — multiplies tokens by model-specific energy profiles sourced from peer-reviewed measurements ([arXiv 2505.09598](https://arxiv.org/abs/2505.09598), [arXiv 2511.05597](https://arxiv.org/abs/2511.05597), Epoch AI 2025).
-3. **Water** — applies datacenter Water Usage Effectiveness (WUE) factors per cloud provider (AWS, Google, Microsoft, Meta sustainability reports).
-4. **CO2** — applies regional grid carbon intensity (EPA eGRID 2023, IEA 2025, Ember 2025).
-5. **Scoring** — rolls everything into a daily eco score (A+ through F) based on total token volume and model efficiency.
-
-All estimates carry ~2-5x uncertainty. This is for awareness, not precision accounting. See [`docs/methodology.md`](docs/methodology.md) for the full breakdown.
-
 ## CLI Usage
 
 ```bash
@@ -81,59 +108,7 @@ npx ecoliko config set region eu-nordic          # set your grid region
 npx ecoliko doctor                               # verify log detection
 ```
 
-## Browser Extension
 
-```bash
-cd packages/extension
-npm run build
-```
-
-Load `packages/extension/dist/` as an unpacked extension in Chrome/Edge, or `dist-firefox/` in Firefox. Tracks ChatGPT, Claude.ai, and Gemini automatically.
-
-## Desktop App
-
-```bash
-cd packages/desktop
-npm run start
-```
-
-Adds a leaf icon to your system tray. Click it for a live dashboard popup showing today's impact, 7-day history, and per-model breakdowns.
-
-## Supported Models
-
-60+ models including GPT-4o/4.1, Claude Opus/Sonnet/Haiku, Gemini 2.5, Llama 3/4, DeepSeek, Mistral, Grok, Qwen, and more. Local models (Ollama, LM Studio) use separate energy profiles that account for consumer GPU efficiency. Unknown models fall back to a conservative default.
-
-## Eco Score
-
-| Grade | Daily Tokens |
-|-------|-------------|
-| A+ | < 500 |
-| A | < 5,000 |
-| B | < 25,000 |
-| C | < 100,000 |
-| D | < 500,000 |
-| F | >= 500,000 |
-
-Smaller, more efficient models score better at the same token count.
-
-## Configuration
-
-Set your region for more accurate CO2 estimates:
-
-```bash
-npx ecoliko config set region us-west
-```
-
-| Region | g CO2/kWh |
-|--------|-----------|
-| eu-nordic | 30 |
-| brazil | 75 |
-| canada | 120 |
-| uk | 170 |
-| us-west | 230 |
-| us-average | 370 |
-| australia | 530 |
-| india | 650 |
 
 ## Development
 

@@ -7,3 +7,12 @@ dist/
 Thumbs.db
 *.zip
 coverage/
+
+# GitKB capture outputs
+artifacts/gitkb/
+
+# GitKB
+.kb/.cache/
+.kb/store/
+.kb/workspace/
+.kb/workspaces/
