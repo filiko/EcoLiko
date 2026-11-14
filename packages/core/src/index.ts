@@ -7,6 +7,13 @@ export {
   HIGH_ENERGY_ANCHORS,
 } from './range.js';
 export type { PublishedQueryEnergy } from './range.js';
+export {
+  estimateSimpleUsage,
+  SIMPLE_USAGE_ASSUMPTIONS,
+  SIMPLE_USAGE_PLATFORM,
+  SIMPLE_USAGE_DEFAULT_DAYS,
+} from './simple-usage.js';
+export type { ModelClassAssumption } from './simple-usage.js';
 export { COMPARISONS } from './comparisons.js';
 export type { ComparisonEntry, Range, WaterKind } from './comparisons.js';
 export { estimateTokenCount, detectContentType } from './tokenizer.js';
