@@ -97,6 +97,44 @@ describe('MODEL_ENERGY_PROFILES coverage', () => {
     const v3Impact = estimateImpact(makeEvent('deepseek-v3'));
     expect(r1Impact.energyKwh).toBeGreaterThan(v3Impact.energyKwh);
   });
+
+  it('includes current models with published figures', () => {
+    for (const model of ['gpt-5']) {
+      expect(MODEL_ENERGY_PROFILES[model], `Missing profile for ${model}`).toBeDefined();
+    }
+  });
+
+  it('source and basis are filled together and basis is a known value', () => {
+    for (const [name, profile] of Object.entries(MODEL_ENERGY_PROFILES)) {
+      expect(profile.source === undefined, `${name}: source without basis or vice versa`)
+        .toBe(profile.basis === undefined);
+      if (profile.basis !== undefined) {
+        expect(['measured', 'provider-reported', 'inferred'], name).toContain(profile.basis);
+        expect(profile.source!.length, `${name} source`).toBeGreaterThan(10);
+      }
+    }
+  });
+
+  it('refreshed profiles carry a source', () => {
+    for (const model of ['gpt-4o', 'gpt-5', 'claude-sonnet-4', 'deepseek-v3', 'deepseek-r1']) {
+      expect(MODEL_ENERGY_PROFILES[model].source, model).toBeDefined();
+    }
+  });
+
+  it('DeepSeek-R1 per-token energy reflects the measured R1/V3 ratio, not reasoning length', () => {
+    // Same base model; ML.ENERGY v3.0 measured R1 at ~1.8x V3 per output token.
+    // A ratio far above that would mean reasoning length is baked into the
+    // per-token figure and counted twice.
+    const ratio = MODEL_ENERGY_PROFILES['deepseek-r1'].outputKwhPer1kTokens
+      / MODEL_ENERGY_PROFILES['deepseek-v3'].outputKwhPer1kTokens;
+    expect(ratio).toBeGreaterThan(1);
+    expect(ratio).toBeLessThan(2.5);
+  });
+
+  it('GPT-5 costs more per token than GPT-4o (Jegham et al. v6)', () => {
+    expect(estimateImpact(makeEvent('gpt-5')).energyKwh)
+      .toBeGreaterThan(estimateImpact(makeEvent('gpt-4o')).energyKwh);
+  });
 });
 
 describe('PLATFORM_OPERATOR coverage', () => {

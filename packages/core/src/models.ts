@@ -79,4 +79,37 @@ export interface ModelEnergyProfile {
   outputKwhPer1kTokens: number;
   /** Whether this is a local model (affects water/PUE defaults) */
   isLocal?: boolean;
+  /** Where the figure comes from (citation, plus how it was derived) */
+  source?: string;
+  /**
+   * How the figure was obtained:
+   * - 'measured': derived from a published energy measurement of this model
+   * - 'provider-reported': the model's provider published the figure
+   * - 'inferred': scaled from another model's figure or from model size
+   */
+  basis?: 'measured' | 'provider-reported' | 'inferred';
+}
+
+/**
+ * Low / central / high impact estimates for one event.
+ * `central` is exactly what estimateImpact() returns. Water in `low` and
+ * `central` is on-site cooling water consumed; water in `high` also includes
+ * off-site water consumed generating the electricity (see
+ * IMPACT_RANGE_WATER_KIND).
+ */
+export interface ImpactRange {
+  low: ImpactEstimate;
+  central: ImpactEstimate;
+  high: ImpactEstimate;
+}
+
+/** Coarse model size class for estimateSimpleUsage() */
+export type ModelClass = 'small' | 'standard' | 'reasoning';
+
+/** Everyday usage description for estimateSimpleUsage() */
+export interface SimpleUsageInput {
+  messagesPerDay: number;
+  modelClass: ModelClass;
+  /** Number of days to cover (default 365) */
+  days?: number;
 }

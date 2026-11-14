@@ -13,18 +13,62 @@ import type { ModelEnergyProfile } from './models.js';
  * - TokenPowerBench (arXiv 2512.03024, Dec 2024) — H100 cluster benchmarks
  * - Luccioni et al., "Power Hungry Processing" (arXiv 2311.16863, 2023)
  *
- * These are estimates with significant uncertainty (0.3x-3x range).
- * No paper has directly measured proprietary model energy — all cloud model
- * figures are inferred from external observations.
+ * Added November 2026:
+ * - Jegham et al. v6 (arXiv 2505.09598v6, 24 Nov 2025), Table 4 — per-model
+ *   Wh per query at 100/300, 1k/1k and 10k/1.5k input/output tokens
+ * - Oviedo et al., "Energy Use of AI Inference, Efficiency Pathways, and
+ *   Test-Time Scaling", Joule (2026) 102430 (arXiv 2509.20241v2), Table 1,
+ *   which also compiles ML.ENERGY Benchmark v3.0 measurements
+ * - Elsworth et al. (Google), arXiv 2508.15734 (Aug 2025) — median Gemini
+ *   Apps text prompt 0.24 Wh (no token count given, so not usable per token)
  *
- * Updated March 2026 based on "How Hungry is AI?" and Epoch AI data.
+ * The range these estimates can be off by is encoded in range.ts
+ * (estimateImpactRange), not here. Only some figures are measured; `basis`
+ * says which. Proprietary models have no direct measurement: their figures
+ * are inferred from external throughput-based estimates or from model size.
+ *
+ * Reasoning models: providers report hidden reasoning tokens as output
+ * tokens, and EcoLiko counts them. A per-token profile must therefore NOT
+ * also bake the longer reasoning output into the per-token figure, or that
+ * output is counted twice. Per-query figures for reasoning models (o3,
+ * DeepSeek-R1, GPT-5 high) in Jegham et al. include hidden reasoning tokens
+ * that their stated output-token count does not, so they cannot be turned
+ * into per-token figures.
+ *
+ * Updated March 2026 based on "How Hungry is AI?" and Epoch AI data;
+ * November 2026 additions marked with `source`/`basis`.
  */
 export const MODEL_ENERGY_PROFILES: Record<string, ModelEnergyProfile> = {
   // OpenAI models
   // GPT-4o: "How Hungry is AI?" reports 1.215 Wh for 1K in + 1K out (medium prompt)
   // Epoch AI: ~0.3 Wh for 500 output tokens. Implies ~0.0006 kWh/1K combined.
-  'gpt-4o':        { inputKwhPer1kTokens: 0.00012, outputKwhPer1kTokens: 0.00060 },
-  'gpt-4.1':       { inputKwhPer1kTokens: 0.00012, outputKwhPer1kTokens: 0.00060 },
+  // With DEFAULT_PUE this gives 0.345 Wh for 500 output tokens, in line with
+  // the 0.34 Wh "average ChatGPT query" OpenAI's CEO reported in June 2025.
+  'gpt-4o': {
+    inputKwhPer1kTokens: 0.00012, outputKwhPer1kTokens: 0.00060,
+    source: 'Epoch AI (You, Feb 2025): ~0.3 Wh per GPT-4o query of 500 output tokens; input set at 1/5 of output per arXiv 2511.05597',
+    basis: 'inferred',
+  },
+  // Jegham et al. v6 put GPT-4.1 at 2.6x GPT-4o per query (1k/1k: 3.161 vs
+  // 1.215 Wh). Not adopted as central: those figures come from API
+  // throughput, which Oviedo et al. (Joule 2026) find overstates production
+  // energy. The 2.6x is carried as this model's high bound in range.ts.
+  'gpt-4.1': {
+    inputKwhPer1kTokens: 0.00012, outputKwhPer1kTokens: 0.00060,
+    source: 'Assumed equal to gpt-4o; Jegham et al. v6 (arXiv 2505.09598) estimate is higher, used as high bound',
+    basis: 'inferred',
+  },
+  // GPT-5 (minimal reasoning): Jegham et al. v6, Sec. 7: 2.33 Wh for 1k in +
+  // 1k out vs 1.215 Wh for GPT-4o under the same method = 1.92x. Scaled from
+  // the gpt-4o profile so the central calibration stays on the Epoch anchor.
+  // At minimal reasoning effort few hidden tokens are generated, so this is a
+  // per-token comparison; higher reasoning effort adds tokens, not per-token
+  // energy, and those tokens are counted separately.
+  'gpt-5': {
+    inputKwhPer1kTokens: 0.00023, outputKwhPer1kTokens: 0.00115,
+    source: 'Jegham et al. v6 (arXiv 2505.09598v6, Nov 2025): GPT-5 minimal 2.33 Wh vs GPT-4o 1.215 Wh at 1k/1k tokens (1.92x), applied to gpt-4o profile',
+    basis: 'inferred',
+  },
   'gpt-4o-mini':   { inputKwhPer1kTokens: 0.00003, outputKwhPer1kTokens: 0.00015 },
   'gpt-4.1-mini':  { inputKwhPer1kTokens: 0.00003, outputKwhPer1kTokens: 0.00015 },
   // "How Hungry is AI?": GPT-4.1-nano short prompt 0.271 Wh (~300 out tokens)
@@ -39,7 +83,16 @@ export const MODEL_ENERGY_PROFILES: Record<string, ModelEnergyProfile> = {
   // "How Hungry is AI?": Claude-3.7 Sonnet ~2.989 Wh for 1K+1K tokens
   // Opus estimated ~2x Sonnet based on model size scaling
   'claude-opus-4':    { inputKwhPer1kTokens: 0.0005,  outputKwhPer1kTokens: 0.0025 },
-  'claude-sonnet-4':  { inputKwhPer1kTokens: 0.00025, outputKwhPer1kTokens: 0.0015 },
+  // Consistent with Jegham et al. v6: Claude 3.7 Sonnet 2.989 Wh vs GPT-4o
+  // 1.215 Wh at 1k/1k tokens (2.46x); this profile is 2.43x gpt-4o at 1k/1k.
+  'claude-sonnet-4': {
+    inputKwhPer1kTokens: 0.00025, outputKwhPer1kTokens: 0.0015,
+    source: 'Scaled from Claude 3.7 Sonnet / GPT-4o ratio in Jegham et al. v6 (arXiv 2505.09598v6); no Claude 4 measurement published',
+    basis: 'inferred',
+  },
+  // No published energy figure exists for Claude 4.5+ or Claude 5.x models
+  // (claude-opus-5.5, claude-sonnet-5.5, claude-haiku-5.5, claude-fable-5.2 as
+  // normalized by the CLI). They fall back to 'default' until one does.
   'claude-haiku-4.5': { inputKwhPer1kTokens: 0.00006, outputKwhPer1kTokens: 0.00030 },
   'claude-haiku-3.5': { inputKwhPer1kTokens: 0.00005, outputKwhPer1kTokens: 0.00025 },
 
@@ -75,18 +128,52 @@ export const MODEL_ENERGY_PROFILES: Record<string, ModelEnergyProfile> = {
   'grok-2':               { inputKwhPer1kTokens: 0.00012, outputKwhPer1kTokens: 0.00060 },
 
   // DeepSeek cloud API (different from local — hyperscaler-optimized batching)
-  'deepseek-v3':          { inputKwhPer1kTokens: 0.00008, outputKwhPer1kTokens: 0.00040 },
+  // ML.ENERGY Benchmark v3.0 (as compiled in Oviedo et al., Joule 2026,
+  // Table 1): DeepSeek-V3 median 3.32 Wh per query at 8,968 average output
+  // tokens on B200, FP8 = 0.37 Wh per 1k output tokens (GPU energy only).
+  // Existing 0.40 kept: it matches the measurement.
+  'deepseek-v3': {
+    inputKwhPer1kTokens: 0.00008, outputKwhPer1kTokens: 0.00040,
+    source: 'ML.ENERGY v3.0 via Oviedo et al. (Joule 2026) Table 1: 3.32 Wh / 8,968 output tokens on B200 (GPU only)',
+    basis: 'measured',
+  },
   'deepseek-v2':          { inputKwhPer1kTokens: 0.00008, outputKwhPer1kTokens: 0.00040 },
-  // DeepSeek R1 reasoning: "How Hungry is AI?" reports 24.6 Wh — very high due to reasoning chains
-  'deepseek-r1':          { inputKwhPer1kTokens: 0.00050, outputKwhPer1kTokens: 0.00250 },
-  'deepseek-r1-zero':     { inputKwhPer1kTokens: 0.00050, outputKwhPer1kTokens: 0.00250 },
+  // DeepSeek-R1: previously 0.0025 kWh/1k output, derived from Jegham et al.'s
+  // 24.6 Wh per query — a figure that includes R1's long hidden reasoning
+  // chain, which EcoLiko already counts as output tokens. That double counted.
+  // ML.ENERGY v3.0 (via Oviedo et al., Table 1): R1 median 7.45 Wh at 11,287
+  // average output tokens on B200, FP8 = 0.66 Wh per 1k output tokens (GPU
+  // only), 1.8x V3 per token under the same setup. Input kept at 1/5 output.
+  'deepseek-r1': {
+    inputKwhPer1kTokens: 0.00013, outputKwhPer1kTokens: 0.00066,
+    source: 'ML.ENERGY v3.0 via Oviedo et al. (Joule 2026) Table 1: 7.45 Wh / 11,287 output tokens on B200 (GPU only)',
+    basis: 'measured',
+  },
+  'deepseek-r1-zero': {
+    inputKwhPer1kTokens: 0.00013, outputKwhPer1kTokens: 0.00066,
+    source: 'Same architecture as deepseek-r1; see that entry',
+    basis: 'inferred',
+  },
 
   // Meta Llama — cloud-hosted (Groq, Together, etc. run these on optimized hardware)
   // Cloud-hosted Llama is more efficient than running locally due to batching & H100s
   'llama-3.3-70b':        { inputKwhPer1kTokens: 0.00008, outputKwhPer1kTokens: 0.00040 },
-  'llama-3.1-70b':        { inputKwhPer1kTokens: 0.00008, outputKwhPer1kTokens: 0.00040 },
+  // ML.ENERGY v3.0 (via Oviedo et al., Joule 2026, Table 1) measured GPU-only
+  // energy well below these: Llama 3.1 70B 0.04 Wh at 361 output tokens,
+  // 405B 0.21 Wh at 367 (about 0.28x the profiles below). Jegham et al. v6
+  // estimate them far above (8.6x and 3.0x). The profiles are kept; both
+  // published bounds feed estimateImpactRange (range.ts).
+  'llama-3.1-70b': {
+    inputKwhPer1kTokens: 0.00008, outputKwhPer1kTokens: 0.00040,
+    source: 'Size-scaled estimate; bracketed by ML.ENERGY v3.0 (lower) and Jegham et al. v6 (higher)',
+    basis: 'inferred',
+  },
   'llama-3.1-8b':         { inputKwhPer1kTokens: 0.00002, outputKwhPer1kTokens: 0.00010 },
-  'llama-3.1-405b':       { inputKwhPer1kTokens: 0.00040, outputKwhPer1kTokens: 0.00200 },
+  'llama-3.1-405b': {
+    inputKwhPer1kTokens: 0.00040, outputKwhPer1kTokens: 0.00200,
+    source: 'Size-scaled estimate; bracketed by ML.ENERGY v3.0 (lower) and Jegham et al. v6 (higher)',
+    basis: 'inferred',
+  },
   'llama-4-scout':        { inputKwhPer1kTokens: 0.00003, outputKwhPer1kTokens: 0.00015 },
   'llama-4-maverick':     { inputKwhPer1kTokens: 0.00010, outputKwhPer1kTokens: 0.00050 },
 
@@ -181,6 +268,10 @@ export const MODEL_ENERGY_PROFILES: Record<string, ModelEnergyProfile> = {
  */
 export const WATER_FACTORS: Record<string, number> = {
   microsoft: 0.30,   // Microsoft FY2024 — fleet average, improved from 0.49 in 2021
+  // NOTE (Nov 2026): Google's own paper (Elsworth et al., arXiv 2508.15734,
+  // Sec. 3.3) gives its fleet WUE as 1.15 L/kWh, about 4x this value. Kept
+  // unchanged so estimateImpact() results stay stable; estimateImpactRange()
+  // uses 1.15 as the high on-site bound.
   google:    0.28,    // Google 2024 — estimate; Google does not prominently publish fleet WUE
   amazon:    0.15,    // AWS 2024 — 40% improvement since 2021
   meta:      0.24,    // Meta 2024 Sustainability Report
@@ -308,6 +399,10 @@ export const PLATFORM_OPERATOR: Record<string, string> = {
  * Updated March 2026. Grids are decarbonizing; these values reflect 2024-2025 data.
  */
 export const CO2_INTENSITY: Record<string, number> = {
+  // NOTE (Nov 2026): eGRID2023 rev2 summary tables (June 2025) give the US
+  // total output CO2 rate as 767.2 lb/MWh = 348 g/kWh. Kept at 370 so
+  // estimateImpact() results stay stable; estimateImpactRange() uses 348 as
+  // the low bound for US/default grids.
   'us-average':  370,   // EPA eGRID 2023: ~367 g/kWh national average
   'us-west':     230,   // WECC region — hydro, solar, wind
   'us-east':     350,   // SERC/RFC — gas-heavy, declining coal
@@ -345,6 +440,11 @@ export const LOCAL_PUE = 1.0;
  * Reference: Shower = 50L (≈13.2 gallons)
  * Toilet flush = 2L (with hand washing)
  * Jug = 4L threshold for bottle display
+ *
+ * These are display thresholds. Sourced household figures for the same
+ * things (US gallon jug 3.785 L; flush 4.8-22.7 L, 6.1 L federal standard;
+ * average US shower 59.8 L) are in COMPARISONS (comparisons.ts), with the
+ * differences noted there.
  */
 export const WATER_BENCHMARKS = {
   jug: 4,
