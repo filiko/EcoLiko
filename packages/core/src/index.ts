@@ -1,4 +1,12 @@
 export { estimateImpact, aggregateEvents } from './estimator.js';
+export {
+  estimateImpactRange,
+  RANGE_BOUNDS,
+  IMPACT_RANGE_WATER_KIND,
+  LOW_ENERGY_ANCHORS,
+  HIGH_ENERGY_ANCHORS,
+} from './range.js';
+export type { PublishedQueryEnergy } from './range.js';
 export { estimateTokenCount, detectContentType } from './tokenizer.js';
 export { calculateEcoScore } from './score.js';
 export {
@@ -20,4 +28,7 @@ export type {
   ModelEnergyProfile,
   ModelBreakdown,
   PlatformBreakdown,
+  ImpactRange,
+  ModelClass,
+  SimpleUsageInput,
 } from './models.js';
