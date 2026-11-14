@@ -78,20 +78,27 @@ export function parseClaudeCodeLogs(since?: number): UsageEvent[] {
 
     for (const projectDir of projects) {
       const projectPath = join(claudeDir, projectDir);
-      const files = readdirSync(projectPath)
-        .filter(f => f.endsWith('.jsonl'))
-        .map(f => join(projectPath, f));
+      // Stat each file once (not inside the sort comparator).
+      const files: { path: string; mtimeMs: number }[] = [];
+      for (const f of readdirSync(projectPath)) {
+        if (!f.endsWith('.jsonl')) continue;
+        const path = join(projectPath, f);
+        try { files.push({ path, mtimeMs: statSync(path).mtimeMs }); } catch { /* skip */ }
+      }
 
-      // Sort files by their last-modified time so we process in chronological order
-      files.sort((a, b) => {
-        try { return statSync(a).mtimeMs - statSync(b).mtimeMs; } catch { return 0; }
-      });
+      // Process in chronological order of last modification
+      files.sort((a, b) => a.mtimeMs - b.mtimeMs);
 
-      for (const filePath of files) {
+      for (const { path: filePath, mtimeMs } of files) {
+        // Entries are appended as they happen, so a file last modified before
+        // `since` cannot hold an entry at or after `since`.
+        if (since != null && mtimeMs < since) continue;
         try {
           const content = readFileSync(filePath, 'utf-8');
           for (const line of content.split('\n')) {
-            if (!line.trim()) continue;
+            // Only assistant entries with a usage block matter; skip JSON.parse
+            // for everything else (most of a session log is tool output).
+            if (!line.includes('"usage"')) continue;
             try {
               parseEntry(JSON.parse(line) as ClaudeLogEntry, seen, since, events);
             } catch { /* skip malformed line */ }
@@ -155,12 +162,29 @@ function parseEntry(
   });
 }
 
-function normalizeModel(model: string): string {
+/**
+ * Normalize a Claude model id from the logs to a stable name.
+ *
+ * - Strips a trailing context-window tag such as "[1m]" and a dated snapshot
+ *   suffix such as "-20250514".
+ * - Claude 4.x and 3.x ids collapse to the family keys that have energy
+ *   profiles in @ecoliko/core (claude-opus-4, claude-sonnet-4, ...).
+ * - Any other claude-<family>-<major>[-<minor>] id becomes
+ *   claude-<family>-<major>[.<minor>], e.g. claude-opus-5-5 -> claude-opus-5.5.
+ *   Core has no published energy figure for these yet, so they use the
+ *   'default' profile.
+ */
+export function normalizeModel(raw: string): string {
+  const model = raw.replace(/\[[^\]]*\]$/, '');
   if (model.startsWith('claude-opus-4'))   return 'claude-opus-4';
   if (model.startsWith('claude-sonnet-4')) return 'claude-sonnet-4';
   if (model.startsWith('claude-haiku-4'))  return 'claude-haiku-4.5';
   if (model.startsWith('claude-haiku-3'))  return 'claude-haiku-3.5';
-  return model;
+  // Claude 3.x API ids put the version first: claude-3-5-haiku-20241022
+  if (model.startsWith('claude-3-5-haiku')) return 'claude-haiku-3.5';
+  const m = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/.exec(model);
+  if (m) return `claude-${m[1]}-${m[2]}${m[3] ? `.${m[3]}` : ''}`;
+  return model.replace(/-\d{8}$/, '');
 }
 
 /**

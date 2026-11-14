@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { parseClaudeCodeLogs, listClaudeProjects } from './claude-code.js';
+import { parseClaudeCodeLogs, listClaudeProjects, normalizeModel } from './claude-code.js';
 
-describe('parseClaudeCodeLogs', () => {
+// These are integration tests over the real ~/.claude/projects logs on the
+// machine running them, so their duration scales with local log volume
+// (hundreds of MB on a heavy user's machine). The default 5 s per-test limit
+// is too tight for that; the parser itself is not the bottleneck (file I/O is).
+describe('parseClaudeCodeLogs', { timeout: 30_000 }, () => {
   it('returns an array', () => {
     const events = parseClaudeCodeLogs();
     expect(Array.isArray(events)).toBe(true);
@@ -59,8 +63,33 @@ describe('parseClaudeCodeLogs', () => {
     const events = parseClaudeCodeLogs();
     const claudeModels = events.filter(e => e.model.startsWith('claude-'));
     for (const event of claudeModels) {
-      // Should not have version suffixes like claude-sonnet-4-20260301
-      expect(event.model).toMatch(/^claude-(opus-4|sonnet-4|haiku-4\.5|haiku-3\.5)$/);
+      // No dated snapshot suffix (claude-sonnet-4-20260301) or context tag ([1m])
+      expect(event.model).not.toMatch(/-\d{8}$/);
+      expect(event.model).not.toMatch(/\[.*\]$/);
+      expect(event.model).toBe(normalizeModel(event.model));
+    }
+  });
+});
+
+describe('normalizeModel', () => {
+  it('collapses Claude 4.x and 3.x ids to profile keys', () => {
+    expect(normalizeModel('claude-sonnet-4-20250514')).toBe('claude-sonnet-4');
+    expect(normalizeModel('claude-opus-4-1-20250805')).toBe('claude-opus-4');
+    expect(normalizeModel('claude-haiku-4-5-20251001')).toBe('claude-haiku-4.5');
+    expect(normalizeModel('claude-3-5-haiku-20241022')).toBe('claude-haiku-3.5');
+  });
+
+  it('turns newer ids into dotted versions without suffixes', () => {
+    expect(normalizeModel('claude-opus-5-5')).toBe('claude-opus-5.5');
+    expect(normalizeModel('claude-opus-5-5[1m]')).toBe('claude-opus-5.5');
+    expect(normalizeModel('claude-sonnet-5-5-20260901')).toBe('claude-sonnet-5.5');
+    expect(normalizeModel('claude-fable-5-2')).toBe('claude-fable-5.2');
+    expect(normalizeModel('claude-opus-6')).toBe('claude-opus-6');
+  });
+
+  it('is idempotent', () => {
+    for (const id of ['claude-opus-5.5', 'claude-sonnet-4', 'claude-haiku-4.5', 'opus']) {
+      expect(normalizeModel(id)).toBe(id);
     }
   });
 });
