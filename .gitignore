@@ -7,3 +7,7 @@ dist/
 Thumbs.db
 *.zip
 coverage/
+
+# Local agent config
+opencode.json
+.opencode/

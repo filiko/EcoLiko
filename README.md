@@ -55,7 +55,6 @@ Auto-detects Claude Code and Codex CLI logs. No API keys or config needed.
 | [`packages/companion`](packages/companion) | Background service — HTTP API, log polling, system tray (headless or with UI) |
 | [`packages/extension`](packages/extension) | Browser extension — intercepts ChatGPT, Claude.ai, and Gemini traffic |
 | [`packages/vscode-extension`](packages/vscode-extension) | VS Code/Cursor/Windsurf extension — status bar widget with live impact |
-| [`packages/openclaw`](packages/openclaw) | Snapshot daemon — periodic log collection for offline/remote machines |
 
 ## How It Works
 
