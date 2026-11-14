@@ -7,6 +7,8 @@ export {
   HIGH_ENERGY_ANCHORS,
 } from './range.js';
 export type { PublishedQueryEnergy } from './range.js';
+export { COMPARISONS } from './comparisons.js';
+export type { ComparisonEntry, Range, WaterKind } from './comparisons.js';
 export { estimateTokenCount, detectContentType } from './tokenizer.js';
 export { calculateEcoScore } from './score.js';
 export {
