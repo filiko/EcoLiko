@@ -7,10 +7,11 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "dev": "tsc && concurrently \"tsc --watch --preserveWatchOutput\" \"nodemon --watch dist --ext js --delay 0.5 --exec \\\"electron dist/main.js\\\"\"",
+    "dev": "npm --prefix ../companion run build && tsc && concurrently \"tsc --watch --preserveWatchOutput\" \"nodemon --watch dist --ext js --delay 0.5 --exec \\\"electron dist/main.js\\\"\"",
     "start": "electron dist/main.js"
   },
   "dependencies": {
+    "@ecoliko/companion": "0.2.0",
     "@ecoliko/core": "0.1.0",
     "electron": "^41.0.0"
   },

@@ -8,6 +8,7 @@ export {
   CO2_INTENSITY,
   DEFAULT_PUE,
   LOCAL_PUE,
+  WATER_BENCHMARKS,
 } from './constants.js';
 export type {
   Platform,
