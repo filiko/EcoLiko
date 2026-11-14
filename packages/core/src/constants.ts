@@ -10,7 +10,7 @@ import type { ModelEnergyProfile } from './models.js';
  * - Jegham et al., "How Hungry is AI?" (arXiv 2505.09598, May 2025) — API-level measurements
  * - "From Prompts to Power" (arXiv 2511.05597, Nov 2025) — 32K measurements, 21 GPU configs
  * - Epoch AI (2025) — GPT-4o ~0.3 Wh per typical query
- * - TokenPowerBench (arXiv 2512.03024, Dec 2024) — H100 cluster benchmarks
+ * - TokenPowerBench (arXiv 2512.03024, Dec 2025) — H100 cluster benchmarks
  * - Luccioni et al., "Power Hungry Processing" (arXiv 2311.16863, 2023)
  *
  * Added November 2026:

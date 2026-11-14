@@ -67,6 +67,7 @@ return {
 |------|-------|
 | `packages/core/src/constants.ts` | Definition |
 | `packages/core/src/index.ts` | Exports `WATER_BENCHMARKS` |
+| `packages/core/src/comparisons.ts` | Sourced everyday figures (`water-jug`, `toilet-flush`, `shower`) |
 | `packages/extension/src/content/widget.ts` | Formats water for floating widget |
 | `packages/extension/src/popup/popup.ts` | Formats water for extension popup |
 
@@ -77,6 +78,27 @@ return {
 | `shower` | 50L | **Primary reference** — all decimals are relative to this |
 | `jug` | 4L | Threshold below which liters are shown alongside decimal |
 | `flush` | 2L | Currently **unused** in calculations — intended for flush count display |
+
+## Sourced Reference Figures
+
+`WATER_BENCHMARKS` are display thresholds and stay as they are. Sourced figures for the same everyday uses live in `COMPARISONS` (`packages/core/src/comparisons.ts`):
+
+| Benchmark | `WATER_BENCHMARKS` | Sourced figure | Source |
+|-----------|--------------------|----------------|--------|
+| `jug` | 4 L | 3.785 L (one US gallon) | NIST SP 811, Appendix B.9 |
+| `flush` | 2 L | 6.06 L federal standard (1.6 gal); 4.85 L WaterSense (1.28 gal); up to 22.7 L older toilets (6 gal) | US EPA WaterSense, Residential Toilets |
+| `shower` | 50 L | 59.8 L US average (7.8 min at 2.1 gal/min) | 2016 Residential End Uses of Water, via Alliance for Water Efficiency |
+
+The 2 L flush is below every sourced figure; no source for it was found. The 50 L shower is about 16% below the US average.
+
+## Kinds of Water
+
+AI water numbers and everyday or food water numbers are often different kinds of water, and EcoLiko keeps them apart (`WaterKind` in `comparisons.ts`):
+
+- **On-site consumed** — what EcoLiko's central estimate shows: data-center cooling water that evaporates. Excludes the water used to generate the electricity.
+- **Total consumed** — on-site plus off-site (power-plant) water. The high end of `estimateImpactRange` uses this; off-site water is usually several times the on-site amount (Li et al.: 2.2 mL on-site vs 14.7 mL off-site per GPT-3 request).
+- **Withdrawn** — water taken from a source, much of it returned. Showers, flushes and irrigation are withdrawals.
+- **Footprint including rain** — includes rainwater used by crops and pasture (e.g. beef 15,400 L/kg, 94% rain). Not comparable with any of the above.
 
 ## Example Outputs
 

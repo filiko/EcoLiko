@@ -12,7 +12,7 @@ Track the water, electricity, and CO2 footprint of your AI usage across every to
 
 ---
 
-EcoLiko is a monorepo of tools that estimate the environmental impact of AI/LLM usage. It reads logs from Claude Code, Codex CLI, and browser-based AI tools, then converts token counts into energy, water, and carbon estimates using peer-reviewed research.
+EcoLiko is a monorepo of tools that estimate the environmental impact of AI/LLM usage. It reads logs from Claude Code, Codex CLI, and browser-based AI tools, then converts token counts into energy, water, and carbon estimates using peer-reviewed research. It started as a browser extension.
 
 ## Getting Started
 
@@ -49,7 +49,7 @@ Auto-detects Claude Code and Codex CLI logs. No API keys or config needed.
 
 | Package | Description |
 |---------|-------------|
-| [`packages/core`](packages/core) | Estimation engine — energy profiles for 60+ models, water/CO2 factors, scoring |
+| [`packages/core`](packages/core) | Estimation engine — energy profiles for 60+ models, water/CO2 factors, low/central/high ranges, comparison dataset, scoring |
 | [`packages/cli`](packages/cli) | Command-line interface — `status`, `report`, `log`, `doctor`, `config` |
 | [`packages/desktop`](packages/desktop) | Electron tray app — system tray icon with a live dashboard popup |
 | [`packages/companion`](packages/companion) | Background service — HTTP API, log polling, system tray (headless or with UI) |
@@ -68,7 +68,39 @@ token count → energy per model (kWh/1K tokens) → water (datacenter WUE) → 
 4. **CO2** — applies regional grid carbon intensity (EPA eGRID 2023, IEA 2025, Ember 2025).
 5. **Scoring** — rolls everything into a daily eco score (A+ through F) based on total token volume and model efficiency.
 
-All estimates carry ~2-5x uncertainty. This is for awareness, not precision accounting. See [`docs/methodology.md`](docs/methodology.md) for the full breakdown.
+This is for awareness, not precision accounting. See [`docs/methodology.md`](docs/methodology.md) for the full breakdown.
+
+### Choose how conservative the estimate is
+
+Published estimates of AI's footprint disagree by several times, depending on who measured what. Besides the central estimate the apps show, the core package gives a low / central / high range:
+
+- **low** — production measurements and provider disclosures (ML.ENERGY measurements, Google's fleet PUE, AWS's water efficiency, the US average grid). On-site cooling water only.
+- **central** — EcoLiko's default, exactly what `estimateImpact` returns. On-site cooling water only.
+- **high** — independent academic estimates (Jegham et al. 2025), industry-average data-center efficiency, the US non-baseload grid, and water consumed at power plants as well as on site.
+
+Every bound is cited in [`packages/core/src/range.ts`](packages/core/src/range.ts). The difference between them is worth a look.
+
+```ts
+import { estimateImpactRange, estimateSimpleUsage } from '@ecoliko/core';
+
+// One logged event
+const { low, central, high } = estimateImpactRange({
+  id: '1', timestamp: Date.now(), platform: 'chatgpt', model: 'gpt-4o',
+  inputTokens: 1500, outputTokens: 800, source: 'cli',
+});
+
+// "20 messages a day with a standard chat model, for a year"
+const year = estimateSimpleUsage({ messagesPerDay: 20, modelClass: 'standard' });
+// modelClass: 'small' | 'standard' | 'reasoning'; days defaults to 365
+```
+
+Values you set yourself (`pue`, `wueFactor`, `co2IntensityGPerKwh`, or a non-US `region`) stay fixed across low, central and high.
+
+### Comparisons
+
+`COMPARISONS` (also in `@ecoliko/core`) is a sourced dataset for putting AI numbers in context: showers, flushes and jugs; beef, lamb, cheese, pork, poultry, tofu and peas per kg; global livestock, aviation, data-center and agricultural totals; and published per-query AI figures. Every entry cites a source and year, and every water figure says what kind of water it is (on-site consumed, total consumed, withdrawn, or a footprint including rain), because those are not comparable with each other.
+
+`packages/core/dist` is plain ES modules with no dependencies, so it can be loaded directly in a browser.
 
 ## CLI Usage
 
@@ -100,7 +132,7 @@ Adds a leaf icon to your system tray. Click it for a live dashboard popup showin
 
 ## Supported Models
 
-60+ models including GPT-4o/4.1, Claude Opus/Sonnet/Haiku, Gemini 2.5, Llama 3/4, DeepSeek, Mistral, Grok, Qwen, and more. Local models (Ollama, LM Studio) use separate energy profiles that account for consumer GPU efficiency. Unknown models fall back to a conservative default.
+60+ models including GPT-4o/4.1/5, Claude Opus/Sonnet/Haiku, Gemini 2.5, Llama 3/4, DeepSeek, Mistral, Grok, Qwen, and more. Local models (Ollama, LM Studio) use separate energy profiles that account for consumer GPU efficiency. Each refreshed profile records its source and whether it is measured, provider-reported or inferred. Models with no published energy figure, including current Claude 5.x and GPT-6 models, fall back to a GPT-4o-class default.
 
 ## Eco Score
 
