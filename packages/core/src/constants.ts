@@ -337,3 +337,17 @@ export const DEFAULT_PUE = 1.15;
 
 /** Default PUE for local inference */
 export const LOCAL_PUE = 1.0;
+
+/**
+ * Water usage benchmarks for displaying icons.
+ * All values in liters.
+ *
+ * Reference: Shower = 50L (≈13.2 gallons)
+ * Toilet flush = 2L (with hand washing)
+ * Jug = 4L threshold for bottle display
+ */
+export const WATER_BENCHMARKS = {
+  jug: 4,
+  flush: 2,
+  shower: 50,
+};

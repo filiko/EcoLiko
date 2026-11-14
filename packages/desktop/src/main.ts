@@ -15,6 +15,8 @@ import { homedir } from 'node:os';
 import { deflateSync } from 'node:zlib';
 import { request } from 'node:http';
 import { aggregateEvents, type UsageTotals, type UsageEvent } from '@ecoliko/core';
+import { startServer } from '@ecoliko/companion/server';
+import { startPollers } from '@ecoliko/companion/poller';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -325,6 +327,12 @@ function createLeafPng(size: number): Buffer {
 }
 
 // ── App bootstrap ────────────────────────────────────────────────────────────
+
+// Start companion services in-process so the app works on any machine without
+// a separately-installed companion. EADDRINUSE is handled gracefully by startServer,
+// so this is a no-op if a standalone companion is already running.
+startServer();   // localhost:7432
+startPollers();  // polls AI tool logs every 60s
 
 // Hide from dock/taskbar — tray-only app
 app.setLoginItemSettings?.({ openAtLogin: false });

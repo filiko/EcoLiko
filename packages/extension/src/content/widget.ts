@@ -3,7 +3,9 @@
  * Injects a persistent pill into AI site pages showing live eco stats.
  */
 
-import { aggregateEvents, type UsageEvent, type EcoScore } from '@ecoliko/core';
+import { aggregateEvents, WATER_BENCHMARKS, type UsageEvent, type EcoScore } from '@ecoliko/core';
+
+const { jug, flush, shower } = WATER_BENCHMARKS;
 
 function formatEnergy(kwh: number): string {
   if (kwh < 0.001) return `${(kwh * 1_000_000).toFixed(1)} μWh`;
@@ -11,14 +13,30 @@ function formatEnergy(kwh: number): string {
   return `${kwh.toFixed(3)} kWh`;
 }
 
-function formatWater(liters: number): string {
+function formatWater(liters: number): { icon: string; value: string } {
   const ml = liters * 1000;
-  if (ml < 5)    return `${ml.toFixed(2)} mL`;
-  if (ml < 44)   return '< 1 shot';
-  if (ml < 500)  return `${(ml / 44).toFixed(1)} shots`;
-  if (ml < 1000) return `${(ml / 500).toFixed(1)} bottle`;
-  if (ml < 3785) return `${(ml / 1000).toFixed(2)} L`;
-  return `${(ml / 3785).toFixed(2)} gal`;
+  if (ml < 1000) {
+    if (ml < 44)   return { icon: '', value: `${ml.toFixed(0)} mL` };
+    if (ml < 500)  return { icon: '', value: `${(ml / 44).toFixed(1)} shots` };
+    return { icon: '', value: `${(ml / 500).toFixed(1)} bottles` };
+  }
+
+  const litersDisplay = liters < jug ? `${liters.toFixed(1)} L` : '';
+  const fraction = liters / shower;
+  const decimal = fraction.toFixed(2).replace(/\.?0+$/, '');
+
+  if (liters < shower) {
+    return { icon: TOILET_SVG, value: `${litersDisplay} ${decimal}` };
+  }
+
+  const showers = Math.floor(fraction);
+  const remainder = liters - (showers * shower);
+  const remainderDecimal = remainder > 0 ? (remainder / shower).toFixed(2).replace(/\.?0+$/, '') : '';
+
+  return {
+    icon: showers > 0 ? SHOWER_SVG + (remainderDecimal ? TOILET_SVG : '') : TOILET_SVG,
+    value: remainderDecimal ? `${showers}.${remainderDecimal}` : `${showers}.0`,
+  };
 }
 
 function formatCO2(grams: number): string {
@@ -38,6 +56,8 @@ const LEAF_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fi
 const ZAP_SVG  = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
 const DROP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
 const WIND_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>`;
+const TOILET_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h10"/><path d="M6 8h12a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z"/><path d="M7 12a5 5 0 0 0 10 0V8H7z"/></svg>`;
+const SHOWER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v2a8 8 0 0 1-16 0V4z"/><path d="M8 6v4"/><path d="M12 6v4"/><path d="M16 6v4"/><path d="M7 14l1 4"/><path d="M11 14l1 4"/><path d="M15 14l1 4"/></svg>`;
 
 const STYLES = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -160,7 +180,8 @@ function init() {
     cardGrade.style.cssText = gradeStyle;
     cardGrade.textContent = grade;
     shadow.getElementById('w-energy')!.textContent = formatEnergy(totals.impact.energyKwh);
-    shadow.getElementById('w-water')!.textContent  = formatWater(totals.impact.waterLiters);
+    const waterResult = formatWater(totals.impact.waterLiters);
+    shadow.getElementById('w-water')!.innerHTML = waterResult.icon + waterResult.value;
     shadow.getElementById('w-co2')!.textContent    = formatCO2(totals.impact.co2Grams);
     const n = totals.eventCount;
     shadow.getElementById('w-footer')!.textContent = `${n} interaction${n !== 1 ? 's' : ''} today`;
